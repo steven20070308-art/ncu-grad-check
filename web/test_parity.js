@@ -5,7 +5,7 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const G = require("./gradcheck.js");
 
-const DEPTS = ["ba_114", "ec_114", "fm_113", "im_114"];
+const DEPTS = ["ba_114", "ec_114", "fm_113", "im_114", "op_114"];
 const programs = JSON.parse(fs.readFileSync("rules/programs_114.json", "utf8")).programs;
 const ALL = Object.keys(programs);
 
@@ -129,5 +129,5 @@ eq("手動-學分查表", m.records.map((r) => r.credits), [3, 3, 0, 3]);
 eq("手動-修課中", m.records[3].grade, "未到");
 eq("手動-無法解析", m.problems, ["XX"]);
 
-console.log(fail ? `✗ ${fail} / ${total} 項不一致` : `✓ ${total} 項全部一致：4 個科系 × 60 份隨機成績單 × 2 種模式，加上解析與稽核`);
+console.log(fail ? `✗ ${fail} / ${total} 項不一致` : `✓ ${total} 項全部一致：${DEPTS.length} 個科系 × 60 份隨機成績單 × 2 種模式，加上解析與稽核`);
 process.exit(fail ? 1 : 0);

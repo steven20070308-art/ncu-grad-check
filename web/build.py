@@ -9,7 +9,7 @@ html = (root / "web/template.html").read_text(encoding="utf-8")
 js = lambda p: json.dumps(json.loads((root / p).read_text(encoding="utf-8")), ensure_ascii=False)
 parts = {
     "/*__GRADCHECK_JS__*/": (root / "web/gradcheck.js").read_text(encoding="utf-8"),
-    "/*__DEPT_RULES__*/[]": "[" + ",".join(js(f"rules/{d}.json") for d in ["ba_114", "im_114", "fm_113", "ec_114"]) + "]",
+    "/*__DEPT_RULES__*/[]": "[" + ",".join(js(f"rules/{d}.json") for d in ["ba_114", "im_114", "fm_113", "ec_114", "op_114"]) + "]",
     "/*__PROGRAMS_114__*/null": js("rules/programs_114.json"),
     '/*__SAMPLE_PASTE__*/""': json.dumps((root / "data/sample_paste.txt").read_text(encoding="utf-8"), ensure_ascii=False),
 }

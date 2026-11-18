@@ -1,0 +1,314 @@
+{
+ "id": "op_114",
+ "dept": "光電科學與工程學系",
+ "entry_year": 114,
+ "source": "光電系 114 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 95,
+ "required_courses": {
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1001"
+    ],
+    "name": "微積分(上)",
+    "credits": 4,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1002"
+    ],
+    "name": "微積分(下)",
+    "credits": 4,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "PH1031"
+    ],
+    "name": "普通物理A(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "PH1032"
+    ],
+    "name": "普通物理A(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "PH1003"
+    ],
+    "name": "普物實驗(上)",
+    "credits": 1,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "PH1004"
+    ],
+    "name": "普物實驗(下)",
+    "credits": 1,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "CM1009"
+    ],
+    "name": "普通化學 I",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "CM1008"
+    ],
+    "name": "普化實驗",
+    "credits": 1,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "OS1006"
+    ],
+    "name": "光電科技概論 I",
+    "credits": 1,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "OS1007"
+    ],
+    "name": "光電科技概論 II",
+    "credits": 1,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "OS1008"
+    ],
+    "name": "計算機概論",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "OS2007"
+    ],
+    "name": "工程數學 I",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS2008"
+    ],
+    "name": "工程數學 II",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "OS2003"
+    ],
+    "name": "電磁學 I",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS2004"
+    ],
+    "name": "電磁學 II",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "OS2013"
+    ],
+    "name": "基礎電學 I",
+    "credits": 4,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS2014"
+    ],
+    "name": "基礎電學 II",
+    "credits": 4,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "OS2015"
+    ],
+    "name": "電子實驗 I",
+    "credits": 1,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS2016"
+    ],
+    "name": "電子實驗 II",
+    "credits": 1,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "OS2017"
+    ],
+    "name": "基礎光學與幾何光學",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS2018"
+    ],
+    "name": "波動光學",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "OS3016"
+    ],
+    "name": "電磁光學",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "OS3011"
+    ],
+    "name": "光學實驗",
+    "credits": 1,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "OS2001"
+    ],
+    "name": "近代物理",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "OS3001"
+    ],
+    "name": "光學系統",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "OS2011"
+    ],
+    "name": "光電半導體物理",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "OS3002"
+    ],
+    "name": "光電工程概論",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "OS3010"
+    ],
+    "name": "光電實驗",
+    "credits": 1,
+    "term": "3下"
+   }
+  ]
+ },
+ "choose_groups": [],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "可選「大一英文」科學課群 6 學分、英文系其他英文課 6 學分，或同一種第二外語 6 學分（英文系或第二外語課號不是 LN 開頭時，本工具可能沒算到，請自行確認）；進修英文不列入畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "note": "含核心必修、選修；核心必修四大領域中至少須修習一個領域（本工具未檢查領域）；超修通識是否計入畢業學分，應修科目表未載明，請向系辦確認"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "0 學分，兩學期"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "prefix",
+   "id": "本系選修",
+   "code_prefix": [
+    "OS"
+   ],
+   "min_credits": 12,
+   "exclusive": true,
+   "exclude_name_contains": [
+    "專題"
+   ],
+   "note": "修業期間內至少選修並通過本系所（OS 開頭）選修 12 學分，專題類課程除外"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項",
+  "雙主修抵修本系必修須檢附課程大綱由系上審查"
+ ],
+ "college": "理學院"
+}

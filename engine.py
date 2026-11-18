@@ -155,6 +155,7 @@ def check(rules, transcript, programs=None, project=None, selected=()):
         elif t == "prefix":
             hits = [r for r in records if r["code"] not in used and r["credits"] > 0
                     and _has_prefix(r["code"], e["code_prefix"])
+                    and not any(w in r["name"] for w in e.get("exclude_name_contains", []))
                     and (r["code"] not in elect_used or (not e.get("exclusive") and e.get("include_choose")))]
         elif t == "program_set":
             s = _program_set(programs, e["programs"], False, e.get("exclude_prefix"))

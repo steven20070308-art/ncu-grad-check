@@ -196,6 +196,7 @@
         hits = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && set.has(r.code)).slice(0, e.min_courses);
       } else if (e.type === "prefix") {
         hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && hasPrefix(r.code, e.code_prefix)
+          && !(e.exclude_name_contains || []).some((w) => r.name.includes(w))
           && (!electUsed.has(r.code) || (!e.exclusive && e.include_choose)));
       } else if (e.type === "program_set") {
         const set = programSet(e.programs, false, e.exclude_prefix);
@@ -406,7 +407,8 @@
       if (r.done) return;
       let ok = () => false;
       if (e.type === "program_core") ok = (o) => programCore.has(o.code);
-      else if (e.type === "prefix") ok = (o) => hasPrefix(o.code, e.code_prefix) && !todoCodes.has(o.code);
+      else if (e.type === "prefix") ok = (o) => hasPrefix(o.code, e.code_prefix) && !todoCodes.has(o.code)
+        && !(e.exclude_name_contains || []).some((w) => (o.name || "").includes(w));
       else if (e.type === "program_set") ok = (o) => programAll.has(o.code) && !hasPrefix(o.code, e.exclude_prefix);
       else if (e.type === "elective_total") ok = (o) => o.type === "選修";
       const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";

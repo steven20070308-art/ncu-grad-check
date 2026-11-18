@@ -91,7 +91,7 @@ python agent.py --paste data/sample_paste.txt --ask "我想修 ERP 學程要注�
 | `agent.py` | Agent 主程式：解析、路由、AI 解釋、稽核 |
 | `engine.py` | 規則引擎：畢業學分與學分學程計算 |
 | `rules/ba_114.json` | 企管系 114 學年度應修規則 |
-| `rules/im_114.json`、`fm_113.json`、`ec_114.json` | 資管、財金、經濟系應修規則 |
+| `rules/im_114.json`、`fm_113.json`、`ec_114.json`、`op_114.json` | 資管、財金、經濟、光電系應修規則 |
 | `rules/programs_114.json` | 兩個學分學程的課表與修畢條件 |
 | `data/sample_*` | **假成績**範例資料（課程清單為真實，成績為隨機產生） |
 | `test_agent.py` | 解析、稽核、路由的自動測試 |
