@@ -20,6 +20,7 @@ AI 服務採 OpenAI 相容格式，可接 Google Gemini、Azure OpenAI、OpenAI 
   python agent.py --paste data/sample_paste.txt --ask "如果我修 BA5040 BA7114 BA5061 會怎樣？"
 """
 import argparse
+import http.client
 import json
 import os
 import re
@@ -84,6 +85,7 @@ def agent_records_ok(text):
 
 
 # ---------- LLM 呼叫 ----------
+TIMEOUT = int(os.getenv("LLM_TIMEOUT", "90"))  # 秒；推理型模型回應較慢
 RETRY_CODES = {429, 500, 502, 503, 504}  # 暫時性錯誤：服務忙碌、超過頻率限制
 
 
@@ -107,11 +109,17 @@ def llm_chat(messages, mock=False):
                     raise SystemExit(f"✗ AI 服務回傳錯誤 {e.code}：{detail}\n"
                                      "  401/403 多半是金鑰錯誤或權限不足；404 多半是網址或模型名稱打錯。")
                 last_error = f"{m} 回傳 {e.code}"
-                if attempt < 2:
-                    print(f"  …{last_error}，{2 ** (attempt + 1)} 秒後重試", flush=True)
-                    time.sleep(2 ** (attempt + 1))
             except urllib.error.URLError as e:
-                raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+                if isinstance(e.reason, TimeoutError):
+                    last_error = f"{m} 逾時"
+                else:
+                    raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+            except (TimeoutError, ConnectionError, http.client.HTTPException) as e:
+                # 等候回應時逾時或連線被中斷：同樣視為暫時性錯誤
+                last_error = f"{m} {'逾時' if isinstance(e, TimeoutError) else '連線中斷'}"
+            if attempt < 2:
+                print(f"  …{last_error}，{2 ** (attempt + 1)} 秒後重試", flush=True)
+                time.sleep(2 ** (attempt + 1))
     raise AIUnavailable(last_error)
 
 
@@ -120,7 +128,7 @@ def _call(base, key, model, messages):
         base.rstrip("/") + "/chat/completions",
         data=json.dumps({"model": model, "messages": messages, "temperature": 0.2}).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
         body = resp.read().decode("utf-8", "ignore")
         status, final_url = resp.status, resp.geturl()
         ctype = resp.headers.get("Content-Type", "")
