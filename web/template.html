@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中大畢業學分檢核</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 版面：左側輸入、右側結果（手機上下排列）；像一張被逐項核對的修業清單 */
+:root {
+  --paper: #f4f6f5;
+  --card: #ffffff;
+  --ink: #16201e;
+  --muted: #5a6763;
+  --line: #d7dedb;
+  --accent: #0d6b66;
+  --accent-soft: #dcecea;
+  --ok: #2b7a4b;
+  --warn: #a8701a;
+  --bad: #b03f35;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101615; --card: #182120; --ink: #e6eeeb; --muted: #9aa9a4; --line: #2c3936;
+    --accent: #4fb8b0; --accent-soft: #1d3633; --ok: #5cbf83; --warn: #e0a84a; --bad: #e57a70;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101615; --card: #182120; --ink: #e6eeeb; --muted: #9aa9a4; --line: #2c3936;
+  --accent: #4fb8b0; --accent-soft: #1d3633; --ok: #5cbf83; --warn: #e0a84a; --bad: #e57a70;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.6 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+h1 { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 14px; }
+.layout { display: grid; gap: 20px; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; align-content: start; }
+.sticky { position: sticky; top: 16px; }
+@media (max-width: 860px) { .sticky { position: static; } }
+h2 { font-size: 16px; margin: 0; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+h2 .n { font: 600 12px var(--font-mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; }
+label { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+select, textarea, input[type="text"] {
+  font: 14px var(--font-body); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%;
+}
+textarea { min-height: 150px; resize: vertical; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button {
+  font: 600 14px var(--font-body); border-radius: 8px; padding: 9px 14px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--card);
+}
+button.ghost { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: progress; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); }
+.check input { margin-top: 4px; accent-color: var(--accent); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.hint code, .mono { font-family: var(--font-mono); }
+.notice { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); margin: 0; }
+.notice.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.notice.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+
+/* 總覽 */
+.summary { display: grid; gap: 12px; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
+.big .num { font: 600 44px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.big .unit { font-size: 15px; color: var(--muted); }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); }
+.stack span { display: block; height: 100%; }
+.s-earned { background: var(--accent); }
+.s-ongoing { background: repeating-linear-gradient(135deg, var(--accent) 0 4px, var(--accent-soft) 4px 8px); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.legend b { color: var(--ink); font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* 逐項清單 */
+.reqs { display: grid; gap: 0; }
+.req { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.req:first-child { border-top: 0; }
+.req .name { font-weight: 500; }
+.req .val { font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); }
+.req.done .bar span { background: var(--ok); }
+.req .note { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+.pill { font: 600 12px var(--font-body); padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.pill.todo { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.pill.ask { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+
+.grid2 { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.terms { display: grid; gap: 10px; }
+.term h3 { font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; background: var(--paper); }
+.chip .mono { color: var(--accent); font-size: 12px; margin-left: 4px; }
+.chip.have { border-color: var(--ok); }
+details summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+details .chips { margin-top: 8px; }
+
+.diff { width: 100%; border-collapse: collapse; font-size: 14px; }
+.diff th, .diff td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); }
+.diff td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.diff .up { color: var(--ok); font-weight: 600; }
+
+.answer { white-space: pre-wrap; font-size: 14.5px; line-height: 1.75; margin: 0; }
+.notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+footer { font-size: 12.5px; color: var(--muted); }
+footer a { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .bar span, .stack span { transition: width .35s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>中大畢業學分檢核</h1>
+    <span class="sub">貼上成績，逐項核對應修科目表與學分學程</span>
+  </header>
+
+  <div class="layout">
+    <section class="panel sticky" aria-labelledby="in-title">
+      <h2 id="in-title"><span class="n">1</span>選科系與入學年度</h2>
+      <label for="dept">科系
+        <select id="dept"></select>
+      </label>
+      <p class="hint" id="dept-src"></p>
+
+      <h2><span class="n">2</span>貼上已修課程</h2>
+      <label for="paste">成績查詢頁整頁複製貼上，或一行一門手動輸入
+        <textarea id="paste" spellcheck="false"></textarea>
+      </label>
+      <p class="hint">手動輸入格式：<code>課號 成績</code>，例如 <code>BA2000 85</code>；還在修的寫 <code>BA2000 修課中</code>；只寫課號視為已通過。</p>
+      <label class="check" for="project"><input type="checkbox" id="project" checked>把本學期修課中的課當成會通過，一起算進去</label>
+      <div class="row">
+        <button id="run" type="button">開始檢核</button>
+        <button id="clear" type="button" class="ghost">清空</button>
+        <button id="sample" type="button" class="ghost">載入範例</button>
+      </div>
+      <p class="notice" id="parse-msg" role="status"></p>
+      <p class="hint">成績只在你的瀏覽器裡計算，不會上傳。按「問 AI」時只會送出檢核摘要，不含原始成績。</p>
+    </section>
+
+    <main class="grid2" style="grid-template-columns: minmax(0,1fr)" id="results">
+      <section class="panel summary" aria-labelledby="sum-title">
+        <h2 id="sum-title">畢業進度</h2>
+        <div class="big"><span class="num" id="remain">–</span><span class="unit" id="remain-unit">學分才能畢業</span></div>
+        <div class="stack" id="stack" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <div class="grid2">
+        <section class="panel" aria-labelledby="req-title">
+          <h2 id="req-title">逐項核對</h2>
+          <div class="reqs" id="reqs"></div>
+        </section>
+        <section class="panel" aria-labelledby="todo-title">
+          <h2 id="todo-title">還沒修的必修</h2>
+          <div class="terms" id="todo"></div>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="prog-title">
+        <h2 id="prog-title">學分學程</h2>
+        <p class="hint">選修規定中有 2 門要從學程必修/必選課挑，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
+        <div class="grid2" id="progs"></div>
+      </section>
+
+      <div class="grid2">
+        <section class="panel" aria-labelledby="sim-title">
+          <h2 id="sim-title">試算：如果我再修這些課</h2>
+          <label for="sim-codes">輸入課號，用空白或逗號分隔
+            <input type="text" id="sim-codes" value="BA5040 BA7114 BA5061 BA5002 BA7042">
+          </label>
+          <div class="row"><button id="sim-run" type="button">試算</button></div>
+          <div id="sim-out"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="ai-title" id="ai-panel">
+          <h2 id="ai-title">問 AI</h2>
+          <label for="ai-q">你的問題
+            <textarea id="ai-q" style="min-height:70px;font-family:var(--font-body);font-size:14px">我還差多少學分？下學期怎麼修比較好？</textarea>
+          </label>
+          <div class="row"><button id="ai-run" type="button">問 AI</button></div>
+          <p class="hint" id="ai-status">AI 只能引用檢核結果裡的數字；回答後會自動稽核。</p>
+          <p class="answer" id="ai-answer"></p>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="note-title">
+        <h2 id="note-title">需要向系辦確認</h2>
+        <ul class="notes" id="notes"></ul>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    依據：<span id="sources"></span>。本工具僅供參考，最終以系辦與註冊組審核為準。
+    原始碼：<a href="https://github.com/steven20070308-art/ncu-grad-check">github.com/steven20070308-art/ncu-grad-check</a>
+  </footer>
+</div>
+
+<script>
+/*__GRADCHECK_JS__*/
+</script>
+<script>
+"use strict";
+const G = window.GradCheck;
+const DEPTS = [
+  { id: "ba_114", label: "企業管理學系｜114 學年度入學", rules: /*__RULES_BA_114__*/null, programs: /*__PROGRAMS_114__*/null },
+];
+const COMING = ["企業管理學系｜113 學年度入學", "資訊管理學系｜114 學年度入學", "經濟學系｜114 學年度入學"];
+const SAMPLE = /*__SAMPLE_PASTE__*/"";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let state = { dept: null, records: [], rep: null, report: null };
+
+function deptOf(id) {
+  const d = DEPTS.find((x) => x.id === id);
+  const programs = { ...d.programs };
+  const questions = programs.open_questions || [];
+  delete programs.open_questions;
+  return { ...d, programs, questions, catalog: G.buildCatalog(d.rules, programs) };
+}
+
+function initSelect() {
+  const sel = $("dept");
+  sel.innerHTML = DEPTS.map((d) => `<option value="${d.id}">${esc(d.label)}</option>`).join("")
+    + COMING.map((c) => `<option disabled>${esc(c)}（尚未支援）</option>`).join("");
+  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); run(); });
+  state.dept = deptOf(sel.value);
+}
+
+function pill(done, label) {
+  return `<span class="pill ${done ? "ok" : "todo"}">${esc(label)}</span>`;
+}
+
+function reqRow(name, got, need, unit, note) {
+  const done = got >= need;
+  const pct = need ? Math.min(100, (got / need) * 100) : 100;
+  return `<div class="req${done ? " done" : ""}">
+    <span class="name">${esc(name)} ${pill(done, done ? "完成" : `還差 ${need - got}${unit}`)}</span>
+    <span class="val">${got} / ${need}${unit}</span>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+    ${note ? `<span class="note">${esc(note)}</span>` : ""}</div>`;
+}
+
+function render() {
+  const { rep, dept } = state;
+  const t = rep.total;
+  const remain = Math.max(0, t.need - t.got);
+  $("remain").textContent = remain ? `還差 ${remain}` : "已達";
+  $("remain-unit").textContent = remain ? `學分（畢業需 ${t.need}）` : `畢業總學分 ${t.need}`;
+  const w = (n) => `${Math.min(100, (n / t.need) * 100)}%`;
+  $("stack").innerHTML = `<span class="s-earned" style="width:${w(rep.earned)}"></span><span class="s-ongoing" style="width:${w(rep.ongoing)}"></span>`;
+  $("legend").innerHTML =
+    `<span><i class="dot s-earned"></i>已取得 <b>${rep.earned}</b></span>` +
+    (rep.ongoing ? `<span><i class="dot s-ongoing"></i>修課中（預計）<b>${rep.ongoing}</b></span>` : "") +
+    `<span><i class="dot" style="background:var(--line)"></i>尚缺 <b>${remain}</b></span>`;
+
+  let rows = "";
+  for (const [g, v] of Object.entries(rep.required)) rows += reqRow(g, v.done_credits, v.need_credits, " 學分");
+  rep.buckets.forEach((b) => (rows += reqRow(b.id, b.got, b.need, " 學分", b.note)));
+  rep.counts.forEach((c) => (rows += reqRow(c.id, c.got, c.need, " 次", c.note)));
+  const e = rep.electives;
+  rows += reqRow("選修：本系課號", e.dept_courses, e.dept_need.min_courses, " 門", `另需合計 ${e.dept_need.min_credits} 學分，目前 ${e.dept_credits} 學分`);
+  rows += reqRow("選修：學程必修/必選", e.program_courses.length, e.program_need.min_courses, " 門", e.program_need.from);
+  rows += `<div class="req"><span class="name">自由選修（其他及格課程）</span><span class="val">${rep.free_elective_credits} 學分</span></div>`;
+  $("reqs").innerHTML = rows;
+
+  const byTerm = {};
+  Object.values(rep.required).forEach((v) => v.todo.forEach((c) => (byTerm[c.term] ||= []).push(c)));
+  const order = ["1上", "1下", "2上", "2下", "3上", "3下", "4上", "4下"];
+  const terms = Object.keys(byTerm).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  $("todo").innerHTML = terms.length ? terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
+    <div class="chips">${byTerm[tm].map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("")
+    : `<p class="notice">必修都修完了。</p>`;
+
+  $("progs").innerHTML = Object.values(rep.programs).map((p) => `<div>
+    <div class="reqs">${reqRow(p.name, p.credits, p.need, " 學分")}
+    ${p.groups.filter((g) => g.need).map((g) => reqRow(g.id, g.got, g.need, " 門")).join("")}</div>
+    ${p.groups.filter((g) => g.id !== "選修").map((g) => `<details><summary>${esc(g.id)}可選課號（${g.options.length}）</summary>
+      <div class="chips">${g.options.map((c) => `<span class="chip${g.courses.includes(c) ? " have" : ""}"><span class="mono">${esc(c)}</span></span>`).join("")}</div></details>`).join("")}
+  </div>`).join("");
+
+  $("notes").innerHTML = [...rep.notes, ...dept.questions].map((n) => `<li>${esc(n)}</li>`).join("")
+    + (rep.failed.length ? `<li>未通過、不計學分的課：${rep.failed.map((r) => esc(r.code)).join("、")}</li>` : "");
+}
+
+function run() {
+  const text = $("paste").value;
+  const msg = $("parse-msg");
+  const parsed = G.parse(text, state.dept.catalog);
+  if (!parsed.records.length) {
+    msg.className = "notice bad";
+    msg.textContent = text.trim() ? "讀不到任何課程。請確認貼上的是成績表格，或改用「課號 成績」一行一門。" : "請先貼上已修課程。";
+    return false;
+  }
+  state.records = parsed.records;
+  state.rep = G.check(state.dept.rules, parsed.records, state.dept.programs, $("project").checked);
+  state.report = { main: G.slimReport(state.rep) };
+  const parts = [`讀到 ${parsed.records.length} 門課（${parsed.mode}）`];
+  if (parsed.problems.length) parts.push(`${parsed.problems.length} 行看不懂已略過`);
+  if (parsed.guessed.length) parts.push(`${parsed.guessed.join("、")} 查不到學分，先以 3 學分計`);
+  msg.className = parsed.problems.length || parsed.guessed.length ? "notice warn" : "notice";
+  msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
+  render();
+  $("sim-out").innerHTML = "";
+  $("ai-answer").textContent = "";
+  return true;
+}
+
+function simulate() {
+  if (!state.rep) return;
+  const codes = [...new Set(($("sim-codes").value.toUpperCase().match(/[A-Z]{2,3}\d{4}/g) || []))];
+  if (!codes.length) { $("sim-out").innerHTML = `<p class="notice warn">請輸入課號，例如 BA5040。</p>`; return; }
+  const plan = codes.map((code) => ({ term: "試算", code, name: state.dept.catalog[code]?.name || code,
+    attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
+  const unknown = codes.filter((c) => !state.dept.catalog[c]);
+  const before = G.check(state.dept.rules, state.records, state.dept.programs, true);
+  const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true);
+  const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
+  let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
+  rows += line("本系課號選修", before.electives.dept_courses, after.electives.dept_courses, `/ ${after.electives.dept_need.min_courses} 門`);
+  rows += line("學程必修/必選", before.electives.program_courses.length, after.electives.program_courses.length, `/ ${after.electives.program_need.min_courses} 門`);
+  for (const k of Object.keys(after.programs))
+    rows += line(after.programs[k].name, before.programs[k].credits, after.programs[k].credits,
+      `/ ${after.programs[k].need}${after.programs[k].done && !before.programs[k].done ? " 修畢" : ""}`);
+  $("sim-out").innerHTML = `<table class="diff"><thead><tr><th></th><th>修課前</th><th>修課後</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    + (unknown.length ? `<p class="hint">${unknown.map(esc).join("、")} 不在規則表裡，先以 3 學分、非學程課計算。</p>` : "")
+    + `<p class="hint">試算一律把本學期修課中的課當成會通過。</p>`;
+  state.report = { before: G.slimReport(before), main: G.slimReport(after), planned: codes };
+}
+
+async function initAI() {
+  const btn = $("ai-run"), status = $("ai-status"), out = $("ai-answer");
+  let sample = null;
+  try { sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
+  if (!sample) {
+    btn.disabled = true;
+    status.textContent = "這個網址沒有連上 AI。在 Claude 裡開啟這個頁面才能使用；其他檢核功能都不受影響。";
+    return;
+  }
+  btn.addEventListener("click", async () => {
+    if (!state.report) return;
+    const q = $("ai-q").value.trim() || "我還差多少學分？";
+    btn.disabled = true; out.textContent = ""; status.textContent = "AI 回答中…";
+    try {
+      const input = `${G.SYSTEM_PROMPT}\n\n學生問題：${q}\n【檢核報告】${JSON.stringify(state.report)}`;
+      const res = await sample(input, { modelTier: "quick", cache: false, onText: ({ text }) => { out.textContent = text; } });
+      out.textContent = res.text;
+      const flags = G.audit(res.text, state.report, q);
+      status.innerHTML = flags.length
+        ? `<span class="pill ask">稽核</span> 回答中的數字 ${flags.join("、")} 不在檢核結果裡，請自行確認。`
+        : `<span class="pill ok">稽核通過</span> 回答中的數字都能在檢核結果找到。`;
+    } catch (err) {
+      status.textContent = err && err.code === "rate_limited" ? "AI 使用次數暫時到上限，請稍後再試。"
+        : err && err.code === "not_granted" ? "沒有取得使用 AI 的同意，其他功能仍可使用。"
+        : `AI 暫時無法回答（${(err && err.message) || "未知錯誤"}），上面的檢核結果仍然正確。`;
+    } finally { btn.disabled = false; }
+  });
+}
+
+initSelect();
+$("dept-src").innerHTML = `規則來源：<a href="${esc(state.dept.rules.source)}">系網站應修科目表</a>`;
+$("sources").innerHTML = [state.dept.rules.source, ...Object.values(state.dept.programs).map((p) => p.source)]
+  .map((u, i) => `<a href="${esc(u)}">${["應修科目表", "ERP 學程", "商業智慧與分析學程"][i] || "來源"}</a>`).join("、");
+$("paste").value = SAMPLE;
+$("run").addEventListener("click", run);
+$("project").addEventListener("change", run);
+$("clear").addEventListener("click", () => { $("paste").value = ""; $("paste").focus(); });
+$("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); });
+$("sim-run").addEventListener("click", simulate);
+run();
+initAI();
+</script>
+</body>
+</html>

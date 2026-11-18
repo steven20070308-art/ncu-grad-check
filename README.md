@@ -22,6 +22,15 @@
 | 數字稽核 | AI 回答中若出現報告裡沒有的數字，標記請人工確認 |
 | 防呆 | 一門課都讀不到時直接停止，不輸出錯誤結論 |
 
+## 網頁版（手機、電腦都能用）
+
+- 線上使用：https://steven20070308-art.github.io/ncu-grad-check/ （需在 repo 設定開啟 GitHub Pages：Settings → Pages → main 分支 /docs）
+- 選科系 → 貼上成績頁或手動輸入「課號 成績」→ 立即看到逐項核對、還沒修的必修、學分學程進度與試算
+- **成績只在瀏覽器內計算，不會上傳**
+- 「問 AI」需在 Claude 裡開啟頁面才能使用；GitHub Pages 版會自動隱藏 AI，其餘功能不受影響
+- 網頁的計算邏輯 `web/gradcheck.js` 與 Python 版逐項比對一致（`node web/test_parity.js`）
+- 修改規則或網頁後執行 `python web/build.py` 重新產生 `docs/index.html`
+
 ## 系統架構
 
 ```
@@ -84,6 +93,10 @@ python agent.py --paste data/sample_paste.txt --ask "我想修 ERP 學程要注�
 | `rules/programs_114.json` | 兩個學分學程的課表與修畢條件 |
 | `data/sample_*` | **假成績**範例資料（課程清單為真實，成績為隨機產生） |
 | `test_agent.py` | 解析、稽核、路由的自動測試 |
+| `web/gradcheck.js` | 網頁版核心邏輯（解析、規則引擎、稽核），與 Python 版一致 |
+| `web/template.html` | 網頁介面 |
+| `web/build.py` | 把邏輯、規則與範例內嵌成單一檔案 `docs/index.html` |
+| `web/test_parity.js` | 網頁版與 Python 版結果比對測試 |
 
 ## 目前限制與待確認
 

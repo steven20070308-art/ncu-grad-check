@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中大畢業學分檢核</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 版面：左側輸入、右側結果（手機上下排列）；像一張被逐項核對的修業清單 */
+:root {
+  --paper: #f4f6f5;
+  --card: #ffffff;
+  --ink: #16201e;
+  --muted: #5a6763;
+  --line: #d7dedb;
+  --accent: #0d6b66;
+  --accent-soft: #dcecea;
+  --ok: #2b7a4b;
+  --warn: #a8701a;
+  --bad: #b03f35;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #101615; --card: #182120; --ink: #e6eeeb; --muted: #9aa9a4; --line: #2c3936;
+    --accent: #4fb8b0; --accent-soft: #1d3633; --ok: #5cbf83; --warn: #e0a84a; --bad: #e57a70;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #101615; --card: #182120; --ink: #e6eeeb; --muted: #9aa9a4; --line: #2c3936;
+  --accent: #4fb8b0; --accent-soft: #1d3633; --ok: #5cbf83; --warn: #e0a84a; --bad: #e57a70;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.6 var(--font-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+h1 { font-size: 24px; font-weight: 900; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 14px; }
+.layout { display: grid; gap: 20px; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; align-content: start; }
+.sticky { position: sticky; top: 16px; }
+@media (max-width: 860px) { .sticky { position: static; } }
+h2 { font-size: 16px; margin: 0; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+h2 .n { font: 600 12px var(--font-mono); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; }
+label { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+select, textarea, input[type="text"] {
+  font: 14px var(--font-body); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%;
+}
+textarea { min-height: 150px; resize: vertical; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.5; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button {
+  font: 600 14px var(--font-body); border-radius: 8px; padding: 9px 14px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--card);
+}
+button.ghost { background: transparent; color: var(--accent); }
+button:disabled { opacity: .5; cursor: progress; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); }
+.check input { margin-top: 4px; accent-color: var(--accent); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.hint code, .mono { font-family: var(--font-mono); }
+.notice { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); margin: 0; }
+.notice.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.notice.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+
+/* 總覽 */
+.summary { display: grid; gap: 12px; }
+.big { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
+.big .num { font: 600 44px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.big .unit { font-size: 15px; color: var(--muted); }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line); }
+.stack span { display: block; height: 100%; }
+.s-earned { background: var(--accent); }
+.s-ongoing { background: repeating-linear-gradient(135deg, var(--accent) 0 4px, var(--accent-soft) 4px 8px); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+.legend b { color: var(--ink); font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* 逐項清單 */
+.reqs { display: grid; gap: 0; }
+.req { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.req:first-child { border-top: 0; }
+.req .name { font-weight: 500; }
+.req .val { font: 600 14px var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--accent); }
+.req.done .bar span { background: var(--ok); }
+.req .note { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+.pill { font: 600 12px var(--font-body); padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.pill.todo { color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.pill.ask { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+
+.grid2 { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.terms { display: grid; gap: 10px; }
+.term h3 { font-size: 13px; color: var(--muted); margin: 0 0 6px; font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; background: var(--paper); }
+.chip .mono { color: var(--accent); font-size: 12px; margin-left: 4px; }
+.chip.have { border-color: var(--ok); }
+details summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+details .chips { margin-top: 8px; }
+
+.diff { width: 100%; border-collapse: collapse; font-size: 14px; }
+.diff th, .diff td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--line); }
+.diff td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.diff .up { color: var(--ok); font-weight: 600; }
+
+.answer { white-space: pre-wrap; font-size: 14.5px; line-height: 1.75; margin: 0; }
+.notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+footer { font-size: 12.5px; color: var(--muted); }
+footer a { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .bar span, .stack span { transition: width .35s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>中大畢業學分檢核</h1>
+    <span class="sub">貼上成績，逐項核對應修科目表與學分學程</span>
+  </header>
+
+  <div class="layout">
+    <section class="panel sticky" aria-labelledby="in-title">
+      <h2 id="in-title"><span class="n">1</span>選科系與入學年度</h2>
+      <label for="dept">科系
+        <select id="dept"></select>
+      </label>
+      <p class="hint" id="dept-src"></p>
+
+      <h2><span class="n">2</span>貼上已修課程</h2>
+      <label for="paste">成績查詢頁整頁複製貼上，或一行一門手動輸入
+        <textarea id="paste" spellcheck="false"></textarea>
+      </label>
+      <p class="hint">手動輸入格式：<code>課號 成績</code>，例如 <code>BA2000 85</code>；還在修的寫 <code>BA2000 修課中</code>；只寫課號視為已通過。</p>
+      <label class="check" for="project"><input type="checkbox" id="project" checked>把本學期修課中的課當成會通過，一起算進去</label>
+      <div class="row">
+        <button id="run" type="button">開始檢核</button>
+        <button id="clear" type="button" class="ghost">清空</button>
+        <button id="sample" type="button" class="ghost">載入範例</button>
+      </div>
+      <p class="notice" id="parse-msg" role="status"></p>
+      <p class="hint">成績只在你的瀏覽器裡計算，不會上傳。按「問 AI」時只會送出檢核摘要，不含原始成績。</p>
+    </section>
+
+    <main class="grid2" style="grid-template-columns: minmax(0,1fr)" id="results">
+      <section class="panel summary" aria-labelledby="sum-title">
+        <h2 id="sum-title">畢業進度</h2>
+        <div class="big"><span class="num" id="remain">–</span><span class="unit" id="remain-unit">學分才能畢業</span></div>
+        <div class="stack" id="stack" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <div class="grid2">
+        <section class="panel" aria-labelledby="req-title">
+          <h2 id="req-title">逐項核對</h2>
+          <div class="reqs" id="reqs"></div>
+        </section>
+        <section class="panel" aria-labelledby="todo-title">
+          <h2 id="todo-title">還沒修的必修</h2>
+          <div class="terms" id="todo"></div>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="prog-title">
+        <h2 id="prog-title">學分學程</h2>
+        <p class="hint">選修規定中有 2 門要從學程必修/必選課挑，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
+        <div class="grid2" id="progs"></div>
+      </section>
+
+      <div class="grid2">
+        <section class="panel" aria-labelledby="sim-title">
+          <h2 id="sim-title">試算：如果我再修這些課</h2>
+          <label for="sim-codes">輸入課號，用空白或逗號分隔
+            <input type="text" id="sim-codes" value="BA5040 BA7114 BA5061 BA5002 BA7042">
+          </label>
+          <div class="row"><button id="sim-run" type="button">試算</button></div>
+          <div id="sim-out"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="ai-title" id="ai-panel">
+          <h2 id="ai-title">問 AI</h2>
+          <label for="ai-q">你的問題
+            <textarea id="ai-q" style="min-height:70px;font-family:var(--font-body);font-size:14px">我還差多少學分？下學期怎麼修比較好？</textarea>
+          </label>
+          <div class="row"><button id="ai-run" type="button">問 AI</button></div>
+          <p class="hint" id="ai-status">AI 只能引用檢核結果裡的數字；回答後會自動稽核。</p>
+          <p class="answer" id="ai-answer"></p>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="note-title">
+        <h2 id="note-title">需要向系辦確認</h2>
+        <ul class="notes" id="notes"></ul>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    依據：<span id="sources"></span>。本工具僅供參考，最終以系辦與註冊組審核為準。
+    原始碼：<a href="https://github.com/steven20070308-art/ncu-grad-check">github.com/steven20070308-art/ncu-grad-check</a>
+  </footer>
+</div>
+
+<script>
+/* 畢業學分檢核核心（瀏覽器版）：與 engine.py / agent.py 的邏輯一致。
+ * 純函式、不碰畫面，可在 Node 執行測試（web/test_parity.js 會和 Python 結果逐項比對）。
+ */
+(function (root) {
+  "use strict";
+
+  const PASS_SCORE = 60;
+  const IN_PROGRESS = ["未到"];
+  const ATTRS = ["必修", "選修", "通識", "體育", "勞動服務", "軍訓"];
+
+  function passed(r, project) {
+    const g = String(r.grade ?? "").trim();
+    if (g.includes("通過")) return true;
+    if (project && IN_PROGRESS.includes(g)) return true;
+    const n = Number(g);
+    return g !== "" && !Number.isNaN(n) && n >= PASS_SCORE;
+  }
+
+  function matches(r, rule) {
+    const m = rule.match || {};
+    if (m.code_prefix && !m.code_prefix.some((p) => r.code.startsWith(p))) return false;
+    if (m.attr && !m.attr.includes(r.attr)) return false;
+    if ((rule.exclude_name_contains || []).some((w) => r.name.includes(w))) return false;
+    return true;
+  }
+
+  // ---------- 解析：成績查詢頁複製的文字 ----------
+  function parseTable(text) {
+    const records = [], problems = [];
+    const termRe = /第\s*(\d+)\s*學年度第\s*(\d)\s*學期/g;
+    const marks = [];
+    let t;
+    while ((t = termRe.exec(text))) marks.push([t.index, `${t[1]}-${t[2]}`]);
+    const codeRe = /^([A-Z]{2,3}\d{4})\b/gm;
+    const hits = [];
+    let c;
+    while ((c = codeRe.exec(text))) hits.push([c.index, c[1]]);
+    hits.forEach(([pos, code], i) => {
+      const chunk = text.slice(pos, i + 1 < hits.length ? hits[i + 1][0] : text.length);
+      const term = (marks.filter(([p]) => p < pos).pop() || [0, "未知"])[1];
+      const tokens = chunk.split(/[\t\n]/).map((s) => s.trim()).filter(Boolean);
+      const a = tokens.findIndex((tk) => ATTRS.includes(tk));
+      const name = a > 0 ? tokens.slice(1, a).find((tk) => /[一-鿿]/.test(tk)) : undefined;
+      const credits = a >= 0 ? parseInt(tokens[a + 2], 10) : NaN;
+      const grade = a >= 0 ? tokens[a + 3] : undefined;
+      if (a < 0 || !name || Number.isNaN(credits) || grade === undefined) {
+        problems.push(chunk.trim().slice(0, 80));
+        return;
+      }
+      records.push({ term, code, name, attr: tokens[a], credits, grade });
+    });
+    return { records, problems };
+  }
+
+  // ---------- 解析：手動輸入「課號 成績」一行一門 ----------
+  function guessAttr(code) {
+    if (/^(GS|CC)/.test(code)) return "通識";
+    if (code.startsWith("PE")) return "體育";
+    if (code.startsWith("SC")) return "勞動服務";
+    return "必修";
+  }
+
+  function parseManual(text, catalog) {
+    const records = [], problems = [], guessed = [];
+    text.split(/\n/).forEach((line) => {
+      const m = line.trim().toUpperCase().match(/^([A-Z]{2,3}\d{4})\s*(\S+)?/);
+      if (!line.trim()) return;
+      if (!m) { problems.push(line.trim().slice(0, 80)); return; }
+      const code = m[1];
+      let grade = m[2] || "通過";
+      if (/修課中|未到|進行中/.test(grade)) grade = "未到";
+      const attr = guessAttr(code);
+      let credits = catalog[code]?.credits;
+      if (credits === undefined) {
+        credits = attr === "體育" || attr === "勞動服務" ? 0 : 3;
+        if (credits) guessed.push(code);
+      }
+      records.push({ term: "手動輸入", code, name: catalog[code]?.name || code, attr, credits, grade });
+    });
+    return { records, problems, guessed };
+  }
+
+  function parse(text, catalog) {
+    const t = parseTable(text);
+    if (t.records.length) return { ...t, guessed: [], mode: "成績頁" };
+    return { ...parseManual(text, catalog), mode: "手動輸入" };
+  }
+
+  // 課號 → 名稱與學分（手動輸入時查學分用）
+  function buildCatalog(rules, programs) {
+    const cat = {};
+    Object.values(rules.required_courses).flat().forEach((c) =>
+      c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
+    Object.values(programs).forEach((p) => p.groups.forEach((g) =>
+      Object.entries(g.courses).forEach(([code, cr]) => { if (!cat[code]) cat[code] = { credits: cr }; })));
+    return cat;
+  }
+
+  // ---------- 規則引擎 ----------
+  function checkProgram(program, transcript, project) {
+    const records = transcript.filter((r) => passed(r, project));
+    const counted = new Set();
+    const groups = program.groups.map((g) => {
+      const hits = records.filter((r) => r.code in g.courses && !counted.has(r.code));
+      hits.forEach((r) => counted.add(r.code));
+      return { id: g.id, got: hits.length, need: g.min_courses, courses: hits.map((r) => r.code),
+               options: Object.keys(g.courses) };
+    });
+    const intern = records.filter((r) => program.internship_prefix.some((p) => r.code.startsWith(p)));
+    const internCredits = Math.min(intern.reduce((s, r) => s + r.credits, 0), program.internship_max_credits);
+    const credits = records.filter((r) => counted.has(r.code)).reduce((s, r) => s + r.credits, 0) + internCredits;
+    return { name: program.name, groups, credits, need: program.min_credits,
+             done: credits >= program.min_credits && groups.every((g) => g.got >= g.need) };
+  }
+
+  function check(rules, transcript, programs, project) {
+    const records = transcript.filter((r) => passed(r, project));
+    const used = new Set();
+    const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
+    const rep = { required: {}, buckets: [], counts: [] };
+
+    for (const [group, courses] of Object.entries(rules.required_courses)) {
+      const done = [], todo = [];
+      for (const c of courses) {
+        const hit = records.find((r) => c.codes.includes(r.code) && !used.has(r.code));
+        if (hit) { used.add(hit.code); done.push(c); } else todo.push(c);
+      }
+      rep.required[group] = { done_credits: done.reduce((s, c) => s + c.credits, 0),
+                              need_credits: courses.reduce((s, c) => s + c.credits, 0), todo };
+    }
+    for (const b of rules.credit_buckets) {
+      const hits = records.filter((r) => !used.has(r.code) && matches(r, b));
+      hits.forEach((r) => used.add(r.code));
+      rep.buckets.push({ id: b.id, got: sum(hits), need: b.min_credits, courses: hits.map((r) => r.code), note: b.note || null });
+    }
+    for (const c of rules.count_requirements) {
+      const hits = records.filter((r) => matches(r, c));
+      hits.forEach((r) => used.add(r.code));
+      rep.counts.push({ id: c.id, got: hits.length, need: c.min_count, note: c.note || null });
+    }
+    const e = rules.electives;
+    const core = new Set();
+    Object.values(programs).forEach((p) => p.groups.forEach((g) => {
+      if (g.id !== "選修") Object.keys(g.courses).forEach((k) => core.add(k));
+    }));
+    const prog = records.filter((r) => !used.has(r.code) && core.has(r.code)).slice(0, e.program_part.min_courses);
+    prog.forEach((r) => used.add(r.code));
+    const dept = records.filter((r) => !used.has(r.code) && e.dept_part.code_prefix.some((p) => r.code.startsWith(p)));
+    dept.forEach((r) => used.add(r.code));
+    rep.electives = { dept_courses: dept.length, dept_credits: sum(dept), dept_need: e.dept_part,
+                      program_courses: prog.map((r) => r.code), program_need: e.program_part };
+    const free = records.filter((r) => !used.has(r.code) && r.credits > 0);
+    rep.free_elective_credits = sum(free);
+    rep.total = { got: sum(records.filter((r) => !r.name.includes("進修英文"))), need: rules.min_total_credits };
+    rep.earned = sum(transcript.filter((r) => passed(r, false) && !r.name.includes("進修英文")));
+    rep.ongoing = project ? sum(transcript.filter((r) => IN_PROGRESS.includes(String(r.grade).trim()))) : 0;
+    rep.failed = transcript.filter((r) => !passed(r, project) && !IN_PROGRESS.includes(String(r.grade).trim()));
+    rep.programs = Object.fromEntries(Object.entries(programs).map(([k, p]) => [k, checkProgram(p, transcript, project)]));
+    rep.notes = rules.warnings;
+    return rep;
+  }
+
+  // AI 只拿到摘要，不拿原始成績
+  function slimReport(rep) {
+    return {
+      total: rep.total,
+      credit_status: { "已取得": rep.earned, "修課中或試算(預計)": rep.ongoing,
+                       "說明": "total.got 已包含修課中與試算的預計學分，尚未真正取得" },
+      required: Object.fromEntries(Object.entries(rep.required).map(([g, v]) => [g, {
+        done: v.done_credits, need: v.need_credits,
+        todo: v.todo.map((c) => `${c.name} ${c.codes[0]}（${c.term}）`) }])),
+      buckets: rep.buckets.map(({ id, got, need, note }) => ({ id, got, need, note })),
+      counts: rep.counts.map(({ id, got, need, note }) => ({ id, got, need, note })),
+      electives: rep.electives,
+      free_elective_credits: rep.free_elective_credits,
+      programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, {
+        name: v.name, credits: v.credits, need: v.need, done: v.done,
+        groups: v.groups.map(({ id, got, need, courses }) => ({ id, got, need, courses })),
+        "必修必選可選課號": Object.fromEntries(v.groups.filter((g) => g.id !== "選修").map((g) => [g.id, g.options])) }])),
+    };
+  }
+
+  // ---------- 稽核：回答中的數字必須出現在報告或問題裡 ----------
+  function numbersIn(obj, out = new Set()) {
+    if (Array.isArray(obj)) obj.forEach((v) => numbersIn(v, out));
+    else if (obj && typeof obj === "object") Object.values(obj).forEach((v) => numbersIn(v, out));
+    else if (typeof obj === "number") out.add(Math.trunc(obj));
+    else if (typeof obj === "string") (obj.match(/\d+/g) || []).forEach((n) => out.add(parseInt(n, 10)));
+    return out;
+  }
+
+  function audit(answer, report, question) {
+    const allowed = numbersIn(report);
+    numbersIn(question, allowed);
+    const base = [...allowed];
+    for (const a of base) for (const b of base) if (a - b >= 0 && a - b <= 200) allowed.add(a - b);
+    const found = (answer.replace(/[A-Z]{2,3}\d{4}/g, "").match(/\d+/g) || []).map((n) => parseInt(n, 10));
+    return [...new Set(found.filter((n) => !allowed.has(n)))].sort((a, b) => a - b);
+  }
+
+  const SYSTEM_PROMPT = `你是中央大學的畢業學分顧問。
+規則：
+1. 所有數字只能來自【檢核報告】，不可自行加總、推算或猜測。
+2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
+3. 用繁體中文、口語、條列，先講結論再講細節，200 字以內。
+4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。
+5. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
+6. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。`;
+
+  const api = { passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
+                slimReport, audit, SYSTEM_PROMPT, IN_PROGRESS };
+  if (typeof module !== "undefined") module.exports = api;
+  else root.GradCheck = api;
+})(this);
+
+</script>
+<script>
+"use strict";
+const G = window.GradCheck;
+const DEPTS = [
+  { id: "ba_114", label: "企業管理學系｜114 學年度入學", rules: {"dept": "企業管理學系", "entry_year": 114, "source": "https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf", "min_total_credits": 128, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"}, {"codes": ["BA4086"], "name": "企管專題", "credits": 3, "term": "4下"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}, {"codes": ["BA1003"], "name": "管理學", "credits": 3, "term": "1下"}, {"codes": ["BA2000"], "name": "財務管理", "credits": 3, "term": "2上"}, {"codes": ["BA2030"], "name": "行銷管理", "credits": 3, "term": "2上"}, {"codes": ["BA2004"], "name": "管理數學", "credits": 3, "term": "2上"}, {"codes": ["BA2015"], "name": "組織行為", "credits": 3, "term": "2上"}, {"codes": ["BA2014"], "name": "作業研究", "credits": 3, "term": "2下"}, {"codes": ["BA3005"], "name": "人力資源管理", "credits": 3, "term": "2下"}, {"codes": ["BA3004"], "name": "資訊管理", "credits": 3, "term": "2下"}, {"codes": ["BA3001"], "name": "生產與作業管理", "credits": 3, "term": "2下"}, {"codes": ["BA3000"], "name": "民法概要", "credits": 3, "term": "3上"}, {"codes": ["BA2016"], "name": "成本會計", "credits": 3, "term": "3上"}, {"codes": ["BA3003"], "name": "商事法", "credits": 3, "term": "3下"}, {"codes": ["BA4000"], "name": "企業政策", "credits": 3, "term": "4上"}]}, "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "進修英文學分不列入本系畢業學分"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "note": "通識核心必修四領域中至少須修習一個領域(領域判定資料待補)"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "表格標示大一上一門、之後另一門(跨欄)，次數待向系辦確認"}], "electives": {"min_courses": 5, "min_credits": 14, "dept_part": {"min_courses": 3, "min_credits": 8, "code_prefix": ["BA"]}, "program_part": {"min_courses": 2, "from": "ERP學程必選課(擇二)或商業智慧與分析學程必選課", "note": "學程必修/必選課號見 rules/programs_114.json；同一門課能否同時認列系選修與學程，需向系辦確認"}}, "warnings": ["必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序", "共同科目及其他畢業條件(英文門檻等)請見學校應修科目表注意事項"]}, programs: {"ERP": {"name": "企業資源規劃學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/14.pdf", "min_credits": 15, "groups": [{"id": "必修", "min_courses": 1, "courses": {"BA5040": 3, "IAA091": 3}}, {"id": "必修(多選二)", "min_courses": 2, "courses": {"BA7114": 3, "BA5061": 3, "BA5062": 3, "BA7043": 3, "IAA009": 3, "BA6093": 3, "BA5033": 3, "IA5016": 3, "IA5044": 3, "IA5051": 3, "IA5054": 3, "HR6090": 3, "BA5041": 3, "IM5006": 3, "BA7041": 3, "AC6019": 3, "BA4100": 3, "BA7121": 3, "IAA027": 3}}, {"id": "選修", "min_courses": 0, "courses": {"FM3035": 3, "IA5041": 3, "BA5002": 3, "BA7009": 3, "IA5021": 3, "BA5042": 3, "BA8066": 3, "BA7042": 3, "BA6039": 3, "IM3031": 3, "IM5002": 3, "IM8031": 3, "IM6100": 3, "BA7024": 3, "BA7040": 3, "IM7061": 3, "AC6001": 3, "IM7074": 3, "AC6004": 3, "IA7038": 3, "BA7113": 3, "AC6013": 3, "AC6015": 3, "BA7122": 2}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "BIA": {"name": "商業智慧與分析學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/49.pdf", "min_credits": 15, "groups": [{"id": "程式撰寫必修(至少選一)", "min_courses": 1, "courses": {"BA5037": 3, "IM3078": 3, "ME2025": 3, "IM5006": 3, "BA7080": 3, "BA7131": 3}}, {"id": "基礎觀念必修(至少選一)", "min_courses": 1, "courses": {"IM2002": 3, "IA7038": 3, "BA7113": 3, "BA5029": 3, "BA7117": 3, "HR6090": 3}}, {"id": "選修", "min_courses": 0, "courses": {"EC3018": 3, "IA7028": 3, "FM3007": 3, "FM3035": 3, "EC4018": 3, "EC5020": 3, "EC5008": 2, "BA5069": 3, "FM6101": 3, "BA7041": 3, "IM5008": 3, "BA7040": 3, "IM7061": 3, "BA7058": 3, "BA8063": 3, "BA7082": 3, "IM5032": 3, "IM3058": 3, "FM6005": 3, "EC5005": 3, "FM6072": 3, "EC3113": 2, "EC5027": 1, "EC5028": 1, "EC7053": 3, "FM6111": 3, "IM3061": 3, "EC3118": 2, "EC3119": 2, "EC3121": 3, "EC3122": 3, "BA7126": 3, "EC5033": 3, "FM5005": 3, "IE8011": 3}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "open_questions": ["同一門課能否同時認列「系選修」與「學分學程」？(本程式預設可以，需向系辦確認)", "兩學程重疊的課(HR6090、IM5006、BA7041、FM3035、資料倉儲等)能否同時認列兩個學程？", "學分學程須在修業最後一學期截止日前提出申請"]} },
+];
+const COMING = ["企業管理學系｜113 學年度入學", "資訊管理學系｜114 學年度入學", "經濟學系｜114 學年度入學"];
+const SAMPLE = "學期成績\n第114學年度第1學期 (114年9月至115年1月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nCL0201\tZ\t國文（B）：中文寫作\nChinese (B): Chinese writing\t必修\t學士班\t2\t75.00\t51.50\t-\nLN1005\tI\t大一英文:管理課群\nFreshman English as an Introduction to Management\t必修\t學士班\t3\t95.00\t46.05\t-\nMA1005\tB\t微積分\nCalculus\t必修\t學士班\t3\t69.00\t46.36\t-\nMT1011\tA\t經濟學\nEconomics\t必修\t學士班\t3\t77.00\t51.37\t-\nMT1021\tA\t企業概論\nIntroduction to Business\t必修\t學士班\t3\t85.00\t57.40\tEMI\nMT1031\tA\t會計學\nAccounting\t必修\t學士班\t3\t66.00\t46.86\t-\nMT1051\tA\t程式設計：Python\nAn Introduction to Computing: Python\t必修\t學士班\t3\t67.00\t48.35\t-\nCC0424\t\t社會參與之導航與探索\nSocialEngagement:AnIntroduction\t通識\t學士班\t2\t91.00\t54.41\t-\nPE1011\tD\t大一體育\nFreshman PE I\t體育\t學士班\t0\t82.00\t59.22\t-\nSC0003\tU\t服務學習課程\nStudent Service-Learning\t勞動服務\t學士班\t0\t勞動服務通過\t勞動服務通過\t-\n操行成績：(範例資料已移除)\n第114學年度第2學期 (115年2月至115年6月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nBA1003\tA\t管理學\nManagement\t必修\t學士班\t3\t68.00\t53.66\t-\nCL0137\t\t國文（A）經典閱讀：近現代散文選讀\nChinese (A): The Classification Analysis of Modern Prose\t必修\t學士班\t3\t76.00\t50.95\t-\nLN1006\tI\t大一英文:管理課群\nFreshman English as an Introduction to Management\t必修\t學士班\t3\t83.00\t59.64\t-\nMA1006\tA\t微積分\nCalculus\t必修\t學士班\t3\t66.00\t45.70\t-\nMT1012\tA\t經濟學\nEconomics\t必修\t學士班\t3\t94.00\t57.88\t-\nMT1032\tA\t會計學\nAccounting\t必修\t學士班\t3\t81.00\t49.34\t-\nGS3096\t\t人工智慧與公共治理\nAI and Public Governance\t通識\t學士班\t2\t71.00\t47.16\t-\nGS4521\t\t人工智慧與商業運用\nArtificial Intelligence and Commercial Applications\t通識\t學士班\t2\t66.00\t46.77\t-\nPE1022\tD\t大一體育\nFreshman PE II\t體育\t學士班\t0\t67.00\t49.63\t-\nSC0004\tU\t服務學習課程\nStudent Service-Learning\t勞動服務\t學士班\t0\t勞動服務通過\t勞動服務通過\t-\n第115學年度第1學期 (115年9月至116年1月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nBA2000\tA\t財務管理\nFinancial Management\t必修\t學士班\t3\t未到\t\t-\nBA2004\tA\t管理數學\nManagerial Mathematics\t必修\t學士班\t3\t未到\t\t-\nBA2015\tA\t組織行為\nOrganizational Behavior\t必修\t學士班\t3\t未到\t\t-\nBA2030\tA\t行銷管理\nMarketing Management\t必修\t學士班\t3\t未到\t\t-\nIM2046\t\t作業系統\nOperating systems\t必修\t學士班\t3\t未到\t\t-\nMT2041\tA\t統計學\nStatistics\t必修\t學士班\t3\t未到\t\t-\nGS3073\t\tAI人工智慧導論\nIntroduction to Artificial Intelligence\t通識\t學士班\t3\t未到\t\t同步遠距教學\nGS4504\tA\t設計思考與行動APP程式設計應用\nDesign Thinking and Mobile Application Programming Design\t通識\t學士班\t2\t未到\t\t-\nGS4519\tB\t機器學習概論\nIntroduction to machine learning\t通識\t學士班\t2\t未到\t\t-\n";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let state = { dept: null, records: [], rep: null, report: null };
+
+function deptOf(id) {
+  const d = DEPTS.find((x) => x.id === id);
+  const programs = { ...d.programs };
+  const questions = programs.open_questions || [];
+  delete programs.open_questions;
+  return { ...d, programs, questions, catalog: G.buildCatalog(d.rules, programs) };
+}
+
+function initSelect() {
+  const sel = $("dept");
+  sel.innerHTML = DEPTS.map((d) => `<option value="${d.id}">${esc(d.label)}</option>`).join("")
+    + COMING.map((c) => `<option disabled>${esc(c)}（尚未支援）</option>`).join("");
+  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); run(); });
+  state.dept = deptOf(sel.value);
+}
+
+function pill(done, label) {
+  return `<span class="pill ${done ? "ok" : "todo"}">${esc(label)}</span>`;
+}
+
+function reqRow(name, got, need, unit, note) {
+  const done = got >= need;
+  const pct = need ? Math.min(100, (got / need) * 100) : 100;
+  return `<div class="req${done ? " done" : ""}">
+    <span class="name">${esc(name)} ${pill(done, done ? "完成" : `還差 ${need - got}${unit}`)}</span>
+    <span class="val">${got} / ${need}${unit}</span>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+    ${note ? `<span class="note">${esc(note)}</span>` : ""}</div>`;
+}
+
+function render() {
+  const { rep, dept } = state;
+  const t = rep.total;
+  const remain = Math.max(0, t.need - t.got);
+  $("remain").textContent = remain ? `還差 ${remain}` : "已達";
+  $("remain-unit").textContent = remain ? `學分（畢業需 ${t.need}）` : `畢業總學分 ${t.need}`;
+  const w = (n) => `${Math.min(100, (n / t.need) * 100)}%`;
+  $("stack").innerHTML = `<span class="s-earned" style="width:${w(rep.earned)}"></span><span class="s-ongoing" style="width:${w(rep.ongoing)}"></span>`;
+  $("legend").innerHTML =
+    `<span><i class="dot s-earned"></i>已取得 <b>${rep.earned}</b></span>` +
+    (rep.ongoing ? `<span><i class="dot s-ongoing"></i>修課中（預計）<b>${rep.ongoing}</b></span>` : "") +
+    `<span><i class="dot" style="background:var(--line)"></i>尚缺 <b>${remain}</b></span>`;
+
+  let rows = "";
+  for (const [g, v] of Object.entries(rep.required)) rows += reqRow(g, v.done_credits, v.need_credits, " 學分");
+  rep.buckets.forEach((b) => (rows += reqRow(b.id, b.got, b.need, " 學分", b.note)));
+  rep.counts.forEach((c) => (rows += reqRow(c.id, c.got, c.need, " 次", c.note)));
+  const e = rep.electives;
+  rows += reqRow("選修：本系課號", e.dept_courses, e.dept_need.min_courses, " 門", `另需合計 ${e.dept_need.min_credits} 學分，目前 ${e.dept_credits} 學分`);
+  rows += reqRow("選修：學程必修/必選", e.program_courses.length, e.program_need.min_courses, " 門", e.program_need.from);
+  rows += `<div class="req"><span class="name">自由選修（其他及格課程）</span><span class="val">${rep.free_elective_credits} 學分</span></div>`;
+  $("reqs").innerHTML = rows;
+
+  const byTerm = {};
+  Object.values(rep.required).forEach((v) => v.todo.forEach((c) => (byTerm[c.term] ||= []).push(c)));
+  const order = ["1上", "1下", "2上", "2下", "3上", "3下", "4上", "4下"];
+  const terms = Object.keys(byTerm).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  $("todo").innerHTML = terms.length ? terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
+    <div class="chips">${byTerm[tm].map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("")
+    : `<p class="notice">必修都修完了。</p>`;
+
+  $("progs").innerHTML = Object.values(rep.programs).map((p) => `<div>
+    <div class="reqs">${reqRow(p.name, p.credits, p.need, " 學分")}
+    ${p.groups.filter((g) => g.need).map((g) => reqRow(g.id, g.got, g.need, " 門")).join("")}</div>
+    ${p.groups.filter((g) => g.id !== "選修").map((g) => `<details><summary>${esc(g.id)}可選課號（${g.options.length}）</summary>
+      <div class="chips">${g.options.map((c) => `<span class="chip${g.courses.includes(c) ? " have" : ""}"><span class="mono">${esc(c)}</span></span>`).join("")}</div></details>`).join("")}
+  </div>`).join("");
+
+  $("notes").innerHTML = [...rep.notes, ...dept.questions].map((n) => `<li>${esc(n)}</li>`).join("")
+    + (rep.failed.length ? `<li>未通過、不計學分的課：${rep.failed.map((r) => esc(r.code)).join("、")}</li>` : "");
+}
+
+function run() {
+  const text = $("paste").value;
+  const msg = $("parse-msg");
+  const parsed = G.parse(text, state.dept.catalog);
+  if (!parsed.records.length) {
+    msg.className = "notice bad";
+    msg.textContent = text.trim() ? "讀不到任何課程。請確認貼上的是成績表格，或改用「課號 成績」一行一門。" : "請先貼上已修課程。";
+    return false;
+  }
+  state.records = parsed.records;
+  state.rep = G.check(state.dept.rules, parsed.records, state.dept.programs, $("project").checked);
+  state.report = { main: G.slimReport(state.rep) };
+  const parts = [`讀到 ${parsed.records.length} 門課（${parsed.mode}）`];
+  if (parsed.problems.length) parts.push(`${parsed.problems.length} 行看不懂已略過`);
+  if (parsed.guessed.length) parts.push(`${parsed.guessed.join("、")} 查不到學分，先以 3 學分計`);
+  msg.className = parsed.problems.length || parsed.guessed.length ? "notice warn" : "notice";
+  msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
+  render();
+  $("sim-out").innerHTML = "";
+  $("ai-answer").textContent = "";
+  return true;
+}
+
+function simulate() {
+  if (!state.rep) return;
+  const codes = [...new Set(($("sim-codes").value.toUpperCase().match(/[A-Z]{2,3}\d{4}/g) || []))];
+  if (!codes.length) { $("sim-out").innerHTML = `<p class="notice warn">請輸入課號，例如 BA5040。</p>`; return; }
+  const plan = codes.map((code) => ({ term: "試算", code, name: state.dept.catalog[code]?.name || code,
+    attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
+  const unknown = codes.filter((c) => !state.dept.catalog[c]);
+  const before = G.check(state.dept.rules, state.records, state.dept.programs, true);
+  const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true);
+  const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
+  let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
+  rows += line("本系課號選修", before.electives.dept_courses, after.electives.dept_courses, `/ ${after.electives.dept_need.min_courses} 門`);
+  rows += line("學程必修/必選", before.electives.program_courses.length, after.electives.program_courses.length, `/ ${after.electives.program_need.min_courses} 門`);
+  for (const k of Object.keys(after.programs))
+    rows += line(after.programs[k].name, before.programs[k].credits, after.programs[k].credits,
+      `/ ${after.programs[k].need}${after.programs[k].done && !before.programs[k].done ? " 修畢" : ""}`);
+  $("sim-out").innerHTML = `<table class="diff"><thead><tr><th></th><th>修課前</th><th>修課後</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+    + (unknown.length ? `<p class="hint">${unknown.map(esc).join("、")} 不在規則表裡，先以 3 學分、非學程課計算。</p>` : "")
+    + `<p class="hint">試算一律把本學期修課中的課當成會通過。</p>`;
+  state.report = { before: G.slimReport(before), main: G.slimReport(after), planned: codes };
+}
+
+async function initAI() {
+  const btn = $("ai-run"), status = $("ai-status"), out = $("ai-answer");
+  let sample = null;
+  try { sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
+  if (!sample) {
+    btn.disabled = true;
+    status.textContent = "這個網址沒有連上 AI。在 Claude 裡開啟這個頁面才能使用；其他檢核功能都不受影響。";
+    return;
+  }
+  btn.addEventListener("click", async () => {
+    if (!state.report) return;
+    const q = $("ai-q").value.trim() || "我還差多少學分？";
+    btn.disabled = true; out.textContent = ""; status.textContent = "AI 回答中…";
+    try {
+      const input = `${G.SYSTEM_PROMPT}\n\n學生問題：${q}\n【檢核報告】${JSON.stringify(state.report)}`;
+      const res = await sample(input, { modelTier: "quick", cache: false, onText: ({ text }) => { out.textContent = text; } });
+      out.textContent = res.text;
+      const flags = G.audit(res.text, state.report, q);
+      status.innerHTML = flags.length
+        ? `<span class="pill ask">稽核</span> 回答中的數字 ${flags.join("、")} 不在檢核結果裡，請自行確認。`
+        : `<span class="pill ok">稽核通過</span> 回答中的數字都能在檢核結果找到。`;
+    } catch (err) {
+      status.textContent = err && err.code === "rate_limited" ? "AI 使用次數暫時到上限，請稍後再試。"
+        : err && err.code === "not_granted" ? "沒有取得使用 AI 的同意，其他功能仍可使用。"
+        : `AI 暫時無法回答（${(err && err.message) || "未知錯誤"}），上面的檢核結果仍然正確。`;
+    } finally { btn.disabled = false; }
+  });
+}
+
+initSelect();
+$("dept-src").innerHTML = `規則來源：<a href="${esc(state.dept.rules.source)}">系網站應修科目表</a>`;
+$("sources").innerHTML = [state.dept.rules.source, ...Object.values(state.dept.programs).map((p) => p.source)]
+  .map((u, i) => `<a href="${esc(u)}">${["應修科目表", "ERP 學程", "商業智慧與分析學程"][i] || "來源"}</a>`).join("、");
+$("paste").value = SAMPLE;
+$("run").addEventListener("click", run);
+$("project").addEventListener("change", run);
+$("clear").addEventListener("click", () => { $("paste").value = ""; $("paste").focus(); });
+$("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); });
+$("sim-run").addEventListener("click", simulate);
+run();
+initAI();
+</script>
+</body>
+</html>
