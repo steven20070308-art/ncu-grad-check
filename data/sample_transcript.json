@@ -1,0 +1,234 @@
+[
+ {
+  "term": "114-1",
+  "code": "CL0201",
+  "name": "國文(B)：中文寫作",
+  "attr": "必修",
+  "credits": 2,
+  "grade": "75"
+ },
+ {
+  "term": "114-1",
+  "code": "LN1005",
+  "name": "大一英文:管理課群",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "95"
+ },
+ {
+  "term": "114-1",
+  "code": "MA1005",
+  "name": "微積分",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "69"
+ },
+ {
+  "term": "114-1",
+  "code": "MT1011",
+  "name": "經濟學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "77"
+ },
+ {
+  "term": "114-1",
+  "code": "MT1021",
+  "name": "企業概論",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "85"
+ },
+ {
+  "term": "114-1",
+  "code": "MT1031",
+  "name": "會計學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "66"
+ },
+ {
+  "term": "114-1",
+  "code": "MT1051",
+  "name": "程式設計：Python",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "67"
+ },
+ {
+  "term": "114-1",
+  "code": "CC0424",
+  "name": "社會參與之導航與探索",
+  "attr": "通識",
+  "credits": 2,
+  "grade": "91"
+ },
+ {
+  "term": "114-1",
+  "code": "PE1011",
+  "name": "大一體育",
+  "attr": "體育",
+  "credits": 0,
+  "grade": "82"
+ },
+ {
+  "term": "114-1",
+  "code": "SC0003",
+  "name": "服務學習課程",
+  "attr": "勞動服務",
+  "credits": 0,
+  "grade": "勞動服務通過"
+ },
+ {
+  "term": "114-2",
+  "code": "BA1003",
+  "name": "管理學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "68"
+ },
+ {
+  "term": "114-2",
+  "code": "CL0137",
+  "name": "國文(A)經典閱讀：近現代散文選讀",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "76"
+ },
+ {
+  "term": "114-2",
+  "code": "LN1006",
+  "name": "大一英文:管理課群",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "83"
+ },
+ {
+  "term": "114-2",
+  "code": "MA1006",
+  "name": "微積分",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "66"
+ },
+ {
+  "term": "114-2",
+  "code": "MT1012",
+  "name": "經濟學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "94"
+ },
+ {
+  "term": "114-2",
+  "code": "MT1032",
+  "name": "會計學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "81"
+ },
+ {
+  "term": "114-2",
+  "code": "GS3096",
+  "name": "人工智慧與公共治理",
+  "attr": "通識",
+  "credits": 2,
+  "grade": "71"
+ },
+ {
+  "term": "114-2",
+  "code": "GS4521",
+  "name": "人工智慧與商業運用",
+  "attr": "通識",
+  "credits": 2,
+  "grade": "66"
+ },
+ {
+  "term": "114-2",
+  "code": "PE1022",
+  "name": "大一體育",
+  "attr": "體育",
+  "credits": 0,
+  "grade": "67"
+ },
+ {
+  "term": "114-2",
+  "code": "SC0004",
+  "name": "服務學習課程",
+  "attr": "勞動服務",
+  "credits": 0,
+  "grade": "勞動服務通過"
+ },
+ {
+  "term": "115-1",
+  "code": "BA2000",
+  "name": "財務管理",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "BA2004",
+  "name": "管理數學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "BA2015",
+  "name": "組織行為",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "BA2030",
+  "name": "行銷管理",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "IM2046",
+  "name": "作業系統",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "MT2041",
+  "name": "統計學",
+  "attr": "必修",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "GS3073",
+  "name": "AI人工智慧導論",
+  "attr": "通識",
+  "credits": 3,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "GS4504",
+  "name": "設計思考與行動APP程式設計應用",
+  "attr": "通識",
+  "credits": 2,
+  "grade": "未到"
+ },
+ {
+  "term": "115-1",
+  "code": "GS4519",
+  "name": "機器學習概論",
+  "attr": "通識",
+  "credits": 2,
+  "grade": "未到"
+ }
+]
