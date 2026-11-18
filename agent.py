@@ -12,7 +12,7 @@ AI 服務採 OpenAI 相容格式，可接 Google Gemini、Azure OpenAI、OpenAI 
 設定環境變數（請放在 .env，不要上傳 GitHub）：
   LLM_BASE_URL  例：https://generativelanguage.googleapis.com/v1beta/openai
   LLM_API_KEY   你的金鑰
-  LLM_MODEL     例：gemini-2.5-flash
+  LLM_MODEL     例：gemini-3.8-flash
 沒有設定時自動使用離線模擬模式（--mock），方便測試流程。
 
 用法：
