@@ -154,7 +154,7 @@ footer a { color: var(--accent); }
       <p class="hint">手動輸入格式：<code>課號 成績</code>，例如 <code>BA2000 85</code>；還在修的寫 <code>BA2000 修課中</code>；只寫課號視為已通過。</p>
       <h2><span class="n">3</span>有修學分學程嗎？（可複選，沒有就不用勾）</h2>
       <div id="tracks" style="display:grid;gap:6px"></div>
-      <details><summary>其他學程（資料整理中）</summary><p class="hint" id="tracks-todo"></p></details>
+      <details><summary>學程收錄狀況</summary><p class="hint" id="tracks-todo"></p></details>
       <label class="check" for="project"><input type="checkbox" id="project" checked>把本學期修課中的課當成會通過，一起算進去</label>
       <div class="row">
         <button id="run" type="button">開始檢核</button>
@@ -388,7 +388,9 @@ function render() {
     ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不適用這個學程${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
     ${p.manual ? `<p class="notice warn">這個學程的辦法沒有列出課號，無法自動檢核，以下僅列出修課規定。</p>` : ""}
     <div class="reqs">${p.manual ? `<div class="req"><span class="name">${esc(p.name)}</span><span class="val">需 ${p.need} 學分</span></div>` : reqRow(p.name, p.credits, p.need, " 學分")}
-    ${p.groups.filter((g) => g.need || g.need_credits).map((g) => g.need ? reqRow(g.id, g.got, g.need, " 門") : reqRow(g.id, g.got_credits, g.need_credits, " 學分")).join("")}</div>
+    ${p.need_courses ? reqRow("總門數", p.courses, p.need_courses, " 門") : ""}
+    ${p.groups.filter((g) => g.need || g.need_credits || g.need_categories).map((g) => (g.need_categories ? reqRow(g.id + "：涵蓋類別", g.got_categories, g.need_categories, " 類") : "")
+      + (g.need && !g.need_categories ? reqRow(g.id, g.got, g.need, " 門") : "") + (g.need_credits ? reqRow(g.id, g.got_credits, g.need_credits, " 學分") : "")).join("")}</div>
     ${p.groups.map((g) => `<details><summary>${esc(g.id)}可選課程（${g.options.length}）</summary>
       <div class="chips">${g.options.map((c) => chip(c, g.courses.includes(c))).join("")}</div></details>`).join("")}
     ${(def.notes || []).length ? `<ul class="notes">${def.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}

@@ -113,8 +113,12 @@
       const credits = g.max_credits ? Math.min(raw, g.max_credits) : raw;  // 例：國際事務每個領域最多採計 8 學分
       const okCourses = hits.length >= (g.min_courses || 0);
       const okCredits = credits >= (g.min_credits || 0);
+      // 「N 類選 M 類，各類至少一門」：categories 是課號→類別，數有修到幾個不同類別
+      const cats = g.categories ? new Set(hits.map((r) => g.categories[r.code])).size : null;
+      const okCats = !g.min_categories || cats >= g.min_categories;
       return { id: g.id, got: hits.length, need: g.min_courses || 0, got_credits: credits, need_credits: g.min_credits || null,
-               done: okCourses && okCredits, courses: hits.map((r) => r.code), options: Object.keys(g.courses) };
+               got_categories: cats, need_categories: g.min_categories || null,
+               done: okCourses && okCredits && okCats, courses: hits.map((r) => r.code), options: Object.keys(g.courses) };
     });
     const intern = records.filter((r) => (program.internship_prefix || []).some((p) => r.code.startsWith(p)));
     const internCredits = Math.min(intern.reduce((s, r) => s + r.credits, 0), program.internship_max_credits ?? 0);
@@ -123,8 +127,11 @@
     const eligible = !(program.exclude_colleges || []).includes(college)
       && (!program.include_colleges || program.include_colleges.includes(college));
     // manual：PDF 沒有列課號，無法自動判斷是否修畢
+    const courses = groups.reduce((s, g) => s + g.got, 0);
     return { name: program.name, groups, credits, need: program.min_credits, eligible, manual: !!program.manual,
-             done: !program.manual && credits >= program.min_credits && groups.every((g) => g.done) };
+             courses, need_courses: program.min_courses || null,
+             done: !program.manual && credits >= program.min_credits && courses >= (program.min_courses || 0)
+               && groups.every((g) => g.done) };
   }
 
   const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
@@ -432,7 +439,8 @@
       Object.values(r.programs).forEach((p) => {
         if (!p.eligible || p.manual) return;
         parts[p.name] = Math.max(0, p.need - p.credits) + p.groups.reduce((s, g) =>
-          s + 3 * Math.max(0, g.need - g.got) + (g.need_credits ? Math.max(0, g.need_credits - g.got_credits) : 0), 0);
+          s + 3 * Math.max(0, g.need - g.got) + (g.need_credits ? Math.max(0, g.need_credits - g.got_credits) : 0)
+            + (g.need_categories ? 3 * Math.max(0, g.need_categories - g.got_categories) : 0), 0);
       });
       return parts;
     };

@@ -55,7 +55,7 @@ function shape(rep) {
     free: rep.free_elective_credits,
     grad: [rep.graduation.graduated, rep.graduation.min_more, rep.graduation.unmet.map((u) => u.id + u.gap)],
     failed: rep.failed.map((r) => r.code),
-    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.eligible, v.manual, v.groups.map((g) => [g.got, g.got_credits, g.done])]])),
+    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.eligible, v.manual, v.courses, v.groups.map((g) => [g.got, g.got_credits, g.got_categories, g.done])]])),
   };
 }
 
@@ -82,7 +82,7 @@ def shape(rep):
       'free': rep['free_elective_credits'],
       'grad': [rep['graduation']['graduated'], rep['graduation']['min_more'], [u['id'] + str(u['gap']) for u in rep['graduation']['unmet']]],
       'failed': [r['code'] for r in rep['failed']],
-      'programs': {k: [v['credits'], v['done'], v['eligible'], v['manual'], [[g['got'], g['got_credits'], g['done']] for g in v['groups']]] for k, v in rep['programs'].items()},
+      'programs': {k: [v['credits'], v['done'], v['eligible'], v['manual'], v['courses'], [[g['got'], g['got_credits'], g['got_categories'], g['done']] for g in v['groups']]] for k, v in rep['programs'].items()},
     }
 out = {}
 for d, ts in cases.items():
