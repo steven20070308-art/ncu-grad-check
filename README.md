@@ -46,7 +46,7 @@
 ## 使用技術
 
 - Python 3（只用內建函式庫，不需安裝套件）
-- AI：OpenAI 相容 API，預設使用 **GitHub Models**（Microsoft，學生免費）；也可換 Azure OpenAI、OpenAI 或本機 Ollama
+- AI：OpenAI 相容 API，預設使用 **Google Gemini**（免費額度、不需信用卡）；也可換 Azure OpenAI（Azure for Students）、OpenAI 或本機 Ollama
 - 規則來源：[企管系 114 學年度應修科目表](https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf)、[ERP 學分學程](https://in.ncu.edu.tw/ncu57170/114/14.pdf)、[商業智慧與分析學分學程](https://in.ncu.edu.tw/ncu57170/114/49.pdf)
 
 ## 安裝與執行
@@ -61,7 +61,7 @@ python test_agent.py
 # 2. 離線模擬（不需要金鑰）
 python agent.py --paste data/sample_paste.txt --ask "我還差多少學分？" --mock
 
-# 3. 接上 AI：複製 .env.example 為 .env，填入 GitHub 金鑰（需 Models 讀取權限）
+# 3. 接上 AI：複製 .env.example 為 .env，填入 Gemini 金鑰（https://aistudio.google.com/apikey）
 python agent.py --paste data/sample_paste.txt --ask "我想修 ERP 學程要注意什麼？"
 ```
 

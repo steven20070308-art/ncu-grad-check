@@ -7,11 +7,12 @@
   4. 解釋 Explainer ：AI 把檢核報告翻成白話，只能引用報告裡的數字
   5. 稽核 Auditor   ：檢查 AI 回答中的每個數字都出現在報告裡，否則標記「請人工確認」
 
-AI 服務採 OpenAI 相容格式，可接 GitHub Models、Azure OpenAI、OpenAI 或本機 Ollama。
+AI 服務採 OpenAI 相容格式，可接 Google Gemini、Azure OpenAI、OpenAI 或本機 Ollama。
+（GitHub Models 已於 2026-07-30 停止服務，不可使用）
 設定環境變數（請放在 .env，不要上傳 GitHub）：
-  LLM_BASE_URL  例：https://models.github.ai/inference
+  LLM_BASE_URL  例：https://generativelanguage.googleapis.com/v1beta/openai
   LLM_API_KEY   你的金鑰
-  LLM_MODEL     例：openai/gpt-4o-mini
+  LLM_MODEL     例：gemini-2.5-flash
 沒有設定時自動使用離線模擬模式（--mock），方便測試流程。
 
 用法：
