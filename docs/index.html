@@ -173,7 +173,7 @@ footer a { color: var(--accent); }
 
       <section class="panel" aria-labelledby="prog-title">
         <h2 id="prog-title">學分學程</h2>
-        <p class="hint">選修規定中有 2 門要從學程必修/必選課挑，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
+        <p class="hint">管理學院各系的選修或「數位素養」規定都會用到這兩個學程的課，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
         <div class="grid2" id="progs"></div>
       </section>
 
@@ -303,8 +303,8 @@ footer a { color: var(--accent); }
   // 課號 → 名稱與學分（手動輸入時查學分用）
   function buildCatalog(rules, programs) {
     const cat = {};
-    Object.values(rules.required_courses).flat().forEach((c) =>
-      c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
+    Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
+      .forEach((c) => c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
     Object.values(programs).forEach((p) => p.groups.forEach((g) =>
       Object.entries(g.courses).forEach(([code, cr]) => { if (!cat[code]) cat[code] = { credits: cr }; })));
     return cat;
@@ -327,11 +327,17 @@ footer a { color: var(--accent); }
              done: credits >= program.min_credits && groups.every((g) => g.got >= g.need) };
   }
 
+  const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
+  const notEnglishPlus = (r) => !r.name.includes("進修英文");
+  const hasPrefix = (code, list) => (list || []).some((p) => code.startsWith(p));
+
+  /* 規則引擎（各系共用）。認列順序：
+   * 必修 → 擇N必修 → 國文/外文/通識 → 體育/服務學習 → 選修規則 → 其餘為自由選修。
+   * used：已被必修、共同科目認列的課；electUsed：已被選修類「擇N」或獨占型選修規則認列的課。 */
   function check(rules, transcript, programs, project) {
     const records = transcript.filter((r) => passed(r, project));
-    const used = new Set();
-    const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
-    const rep = { required: {}, buckets: [], counts: [] };
+    const used = new Set(), electUsed = new Set();
+    const rep = { required: {}, choose: [], buckets: [], counts: [], electives: [], caps: [] };
 
     for (const [group, courses] of Object.entries(rules.required_courses)) {
       const done = [], todo = [];
@@ -342,32 +348,83 @@ footer a { color: var(--accent); }
       rep.required[group] = { done_credits: done.reduce((s, c) => s + c.credits, 0),
                               need_credits: courses.reduce((s, c) => s + c.credits, 0), todo };
     }
+    for (const g of rules.choose_groups || []) {
+      const codes = g.courses.flatMap((c) => c.codes);
+      const hits = records.filter((r) => codes.includes(r.code) && !used.has(r.code) && !electUsed.has(r.code)).slice(0, g.pick);
+      hits.forEach((r) => (g.elective ? electUsed : used).add(r.code));
+      const have = hits.map((r) => r.code);
+      rep.choose.push({ id: g.id, pick: g.pick, got: hits.length, elective: !!g.elective, courses: have,
+                        options: g.courses.filter((c) => !c.codes.some((x) => have.includes(x))) });
+    }
+    let bucketExcess = 0, overflowForCaps = 0;
     for (const b of rules.credit_buckets) {
       const hits = records.filter((r) => !used.has(r.code) && matches(r, b));
       hits.forEach((r) => used.add(r.code));
-      rep.buckets.push({ id: b.id, got: sum(hits), need: b.min_credits, courses: hits.map((r) => r.code), note: b.note || null });
+      const got = sum(hits);
+      const over = Math.max(0, got - b.min_credits);
+      const overMax = b.overflow_max ?? Infinity;
+      bucketExcess += Math.max(0, over - overMax);
+      if (b.overflow_max !== undefined) overflowForCaps += Math.min(over, overMax);
+      rep.buckets.push({ id: b.id, got, need: b.min_credits, courses: hits.map((r) => r.code), note: b.note || null,
+                         overflow: over, overflow_max: b.overflow_max ?? null });
     }
     for (const c of rules.count_requirements) {
       const hits = records.filter((r) => matches(r, c));
       hits.forEach((r) => used.add(r.code));
       rep.counts.push({ id: c.id, got: hits.length, need: c.min_count, note: c.note || null });
     }
-    const e = rules.electives;
-    const core = new Set();
-    Object.values(programs).forEach((p) => p.groups.forEach((g) => {
-      if (g.id !== "選修") Object.keys(g.courses).forEach((k) => core.add(k));
-    }));
-    const prog = records.filter((r) => !used.has(r.code) && core.has(r.code)).slice(0, e.program_part.min_courses);
-    prog.forEach((r) => used.add(r.code));
-    const dept = records.filter((r) => !used.has(r.code) && e.dept_part.code_prefix.some((p) => r.code.startsWith(p)));
-    dept.forEach((r) => used.add(r.code));
-    rep.electives = { dept_courses: dept.length, dept_credits: sum(dept), dept_need: e.dept_part,
-                      program_courses: prog.map((r) => r.code), program_need: e.program_part };
-    const free = records.filter((r) => !used.has(r.code) && r.credits > 0);
+
+    const programSet = (names, coreOnly, exclude) => {
+      const set = new Set();
+      names.forEach((n) => (programs[n]?.groups || []).forEach((g) => {
+        if (coreOnly && g.id === "選修") return;
+        Object.keys(g.courses).forEach((k) => { if (!hasPrefix(k, exclude)) set.add(k); });
+      }));
+      return set;
+    };
+    for (const e of rules.elective_rules || []) {
+      let hits = [];
+      if (e.type === "program_core") {
+        const set = programSet(e.programs, true, []);
+        hits = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && set.has(r.code)).slice(0, e.min_courses);
+      } else if (e.type === "prefix") {
+        hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && hasPrefix(r.code, e.code_prefix)
+          && (!electUsed.has(r.code) || (!e.exclusive && e.include_choose)));
+      } else if (e.type === "program_set") {
+        const set = programSet(e.programs, false, e.exclude_prefix);
+        hits = records.filter((r) => !used.has(r.code) && set.has(r.code));
+      } else if (e.type === "elective_total") {
+        hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && !(e.exclude_attr || []).includes(r.attr));
+      }
+      if (e.exclusive) hits.forEach((r) => electUsed.add(r.code));
+      const res = { id: e.id, type: e.type, got_courses: hits.length, got_credits: sum(hits),
+                    need_courses: e.min_courses ?? null, need_credits: e.min_credits ?? null,
+                    courses: hits.map((r) => r.code), note: e.note || null };
+      res.done = (res.need_courses === null || res.got_courses >= res.need_courses)
+              && (res.need_credits === null || res.got_credits >= res.need_credits);
+      rep.electives.push(res);
+    }
+
+    const chooseCodes = new Set((rules.choose_groups || []).flatMap((g) => g.courses.flatMap((c) => c.codes)));
+    let capExcess = 0;
+    for (const cap of rules.total_caps || []) {
+      const pool = records.filter((r) => !used.has(r.code) && !chooseCodes.has(r.code) && r.credits > 0
+                                         && !hasPrefix(r.code, cap.exclude_prefix));
+      let credits = sum(pool) + overflowForCaps;
+      for (const sc of cap.sub_caps || []) {
+        const sub = sum(pool.filter((r) => hasPrefix(r.code, sc.code_prefix)));
+        credits -= Math.max(0, sub - sc.max);
+      }
+      const counted = Math.min(credits, cap.max);
+      capExcess += credits - counted + (sum(pool) + overflowForCaps - credits);
+      rep.caps.push({ id: cap.id, got: credits, max: cap.max, counted, note: cap.note || null });
+    }
+
+    const free = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && r.credits > 0);
     rep.free_elective_credits = sum(free);
-    rep.total = { got: sum(records.filter((r) => !r.name.includes("進修英文"))), need: rules.min_total_credits };
-    rep.earned = sum(transcript.filter((r) => passed(r, false) && !r.name.includes("進修英文")));
-    rep.ongoing = project ? sum(transcript.filter((r) => IN_PROGRESS.includes(String(r.grade).trim()))) : 0;
+    rep.total = { got: sum(records.filter(notEnglishPlus)) - bucketExcess - capExcess, need: rules.min_total_credits };
+    rep.earned = project ? check(rules, transcript, programs, false).total.got : rep.total.got;
+    rep.ongoing = rep.total.got - rep.earned;
     rep.failed = transcript.filter((r) => !passed(r, project) && !IN_PROGRESS.includes(String(r.grade).trim()));
     rep.programs = Object.fromEntries(Object.entries(programs).map(([k, p]) => [k, checkProgram(p, transcript, project)]));
     rep.notes = rules.warnings;
@@ -383,9 +440,13 @@ footer a { color: var(--accent); }
       required: Object.fromEntries(Object.entries(rep.required).map(([g, v]) => [g, {
         done: v.done_credits, need: v.need_credits,
         todo: v.todo.map((c) => `${c.name} ${c.codes[0]}（${c.term}）`) }])),
+      choose: rep.choose.map((g) => ({ id: g.id, got: g.got, need: g.pick, courses: g.courses,
+        "可選": g.options.map((c) => `${c.name} ${c.codes[0]}`) })),
       buckets: rep.buckets.map(({ id, got, need, note }) => ({ id, got, need, note })),
       counts: rep.counts.map(({ id, got, need, note }) => ({ id, got, need, note })),
-      electives: rep.electives,
+      electives: rep.electives.map(({ id, got_courses, got_credits, need_courses, need_credits, note }) =>
+        ({ id, got_courses, got_credits, need_courses, need_credits, note })),
+      caps: rep.caps,
       free_elective_credits: rep.free_elective_credits,
       programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, {
         name: v.name, credits: v.credits, need: v.need, done: v.done,
@@ -431,10 +492,9 @@ footer a { color: var(--accent); }
 <script>
 "use strict";
 const G = window.GradCheck;
-const DEPTS = [
-  { id: "ba_114", label: "企業管理學系｜114 學年度入學", rules: {"dept": "企業管理學系", "entry_year": 114, "source": "https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf", "min_total_credits": 128, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"}, {"codes": ["BA4086"], "name": "企管專題", "credits": 3, "term": "4下"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}, {"codes": ["BA1003"], "name": "管理學", "credits": 3, "term": "1下"}, {"codes": ["BA2000"], "name": "財務管理", "credits": 3, "term": "2上"}, {"codes": ["BA2030"], "name": "行銷管理", "credits": 3, "term": "2上"}, {"codes": ["BA2004"], "name": "管理數學", "credits": 3, "term": "2上"}, {"codes": ["BA2015"], "name": "組織行為", "credits": 3, "term": "2上"}, {"codes": ["BA2014"], "name": "作業研究", "credits": 3, "term": "2下"}, {"codes": ["BA3005"], "name": "人力資源管理", "credits": 3, "term": "2下"}, {"codes": ["BA3004"], "name": "資訊管理", "credits": 3, "term": "2下"}, {"codes": ["BA3001"], "name": "生產與作業管理", "credits": 3, "term": "2下"}, {"codes": ["BA3000"], "name": "民法概要", "credits": 3, "term": "3上"}, {"codes": ["BA2016"], "name": "成本會計", "credits": 3, "term": "3上"}, {"codes": ["BA3003"], "name": "商事法", "credits": 3, "term": "3下"}, {"codes": ["BA4000"], "name": "企業政策", "credits": 3, "term": "4上"}]}, "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "進修英文學分不列入本系畢業學分"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "note": "通識核心必修四領域中至少須修習一個領域(領域判定資料待補)"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "表格標示大一上一門、之後另一門(跨欄)，次數待向系辦確認"}], "electives": {"min_courses": 5, "min_credits": 14, "dept_part": {"min_courses": 3, "min_credits": 8, "code_prefix": ["BA"]}, "program_part": {"min_courses": 2, "from": "ERP學程必選課(擇二)或商業智慧與分析學程必選課", "note": "學程必修/必選課號見 rules/programs_114.json；同一門課能否同時認列系選修與學程，需向系辦確認"}}, "warnings": ["必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序", "共同科目及其他畢業條件(英文門檻等)請見學校應修科目表注意事項"]}, programs: {"ERP": {"name": "企業資源規劃學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/14.pdf", "min_credits": 15, "groups": [{"id": "必修", "min_courses": 1, "courses": {"BA5040": 3, "IAA091": 3}}, {"id": "必修(多選二)", "min_courses": 2, "courses": {"BA7114": 3, "BA5061": 3, "BA5062": 3, "BA7043": 3, "IAA009": 3, "BA6093": 3, "BA5033": 3, "IA5016": 3, "IA5044": 3, "IA5051": 3, "IA5054": 3, "HR6090": 3, "BA5041": 3, "IM5006": 3, "BA7041": 3, "AC6019": 3, "BA4100": 3, "BA7121": 3, "IAA027": 3}}, {"id": "選修", "min_courses": 0, "courses": {"FM3035": 3, "IA5041": 3, "BA5002": 3, "BA7009": 3, "IA5021": 3, "BA5042": 3, "BA8066": 3, "BA7042": 3, "BA6039": 3, "IM3031": 3, "IM5002": 3, "IM8031": 3, "IM6100": 3, "BA7024": 3, "BA7040": 3, "IM7061": 3, "AC6001": 3, "IM7074": 3, "AC6004": 3, "IA7038": 3, "BA7113": 3, "AC6013": 3, "AC6015": 3, "BA7122": 2}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "BIA": {"name": "商業智慧與分析學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/49.pdf", "min_credits": 15, "groups": [{"id": "程式撰寫必修(至少選一)", "min_courses": 1, "courses": {"BA5037": 3, "IM3078": 3, "ME2025": 3, "IM5006": 3, "BA7080": 3, "BA7131": 3}}, {"id": "基礎觀念必修(至少選一)", "min_courses": 1, "courses": {"IM2002": 3, "IA7038": 3, "BA7113": 3, "BA5029": 3, "BA7117": 3, "HR6090": 3}}, {"id": "選修", "min_courses": 0, "courses": {"EC3018": 3, "IA7028": 3, "FM3007": 3, "FM3035": 3, "EC4018": 3, "EC5020": 3, "EC5008": 2, "BA5069": 3, "FM6101": 3, "BA7041": 3, "IM5008": 3, "BA7040": 3, "IM7061": 3, "BA7058": 3, "BA8063": 3, "BA7082": 3, "IM5032": 3, "IM3058": 3, "FM6005": 3, "EC5005": 3, "FM6072": 3, "EC3113": 2, "EC5027": 1, "EC5028": 1, "EC7053": 3, "FM6111": 3, "IM3061": 3, "EC3118": 2, "EC3119": 2, "EC3121": 3, "EC3122": 3, "BA7126": 3, "EC5033": 3, "FM5005": 3, "IE8011": 3}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "open_questions": ["同一門課能否同時認列「系選修」與「學分學程」？(本程式預設可以，需向系辦確認)", "兩學程重疊的課(HR6090、IM5006、BA7041、FM3035、資料倉儲等)能否同時認列兩個學程？", "學分學程須在修業最後一學期截止日前提出申請"]} },
-];
-const COMING = ["企業管理學系｜113 學年度入學", "資訊管理學系｜114 學年度入學", "經濟學系｜114 學年度入學"];
+const PROGRAMS = {"ERP": {"name": "企業資源規劃學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/14.pdf", "min_credits": 15, "groups": [{"id": "必修", "min_courses": 1, "courses": {"BA5040": 3, "IAA091": 3}}, {"id": "必修(多選二)", "min_courses": 2, "courses": {"BA7114": 3, "BA5061": 3, "BA5062": 3, "BA7043": 3, "IAA009": 3, "BA6093": 3, "BA5033": 3, "IA5016": 3, "IA5044": 3, "IA5051": 3, "IA5054": 3, "HR6090": 3, "BA5041": 3, "IM5006": 3, "BA7041": 3, "AC6019": 3, "BA4100": 3, "BA7121": 3, "IAA027": 3}}, {"id": "選修", "min_courses": 0, "courses": {"FM3035": 3, "IA5041": 3, "BA5002": 3, "BA7009": 3, "IA5021": 3, "BA5042": 3, "BA8066": 3, "BA7042": 3, "BA6039": 3, "IM3031": 3, "IM5002": 3, "IM8031": 3, "IM6100": 3, "BA7024": 3, "BA7040": 3, "IM7061": 3, "AC6001": 3, "IM7074": 3, "AC6004": 3, "IA7038": 3, "BA7113": 3, "AC6013": 3, "AC6015": 3, "BA7122": 2}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "BIA": {"name": "商業智慧與分析學分學程", "source": "https://in.ncu.edu.tw/ncu57170/114/49.pdf", "min_credits": 15, "groups": [{"id": "程式撰寫必修(至少選一)", "min_courses": 1, "courses": {"BA5037": 3, "IM3078": 3, "ME2025": 3, "IM5006": 3, "BA7080": 3, "BA7131": 3}}, {"id": "基礎觀念必修(至少選一)", "min_courses": 1, "courses": {"IM2002": 3, "IA7038": 3, "BA7113": 3, "BA5029": 3, "BA7117": 3, "HR6090": 3}}, {"id": "選修", "min_courses": 0, "courses": {"EC3018": 3, "IA7028": 3, "FM3007": 3, "FM3035": 3, "EC4018": 3, "EC5020": 3, "EC5008": 2, "BA5069": 3, "FM6101": 3, "BA7041": 3, "IM5008": 3, "BA7040": 3, "IM7061": 3, "BA7058": 3, "BA8063": 3, "BA7082": 3, "IM5032": 3, "IM3058": 3, "FM6005": 3, "EC5005": 3, "FM6072": 3, "EC3113": 2, "EC5027": 1, "EC5028": 1, "EC7053": 3, "FM6111": 3, "IM3061": 3, "EC3118": 2, "EC3119": 2, "EC3121": 3, "EC3122": 3, "BA7126": 3, "EC5033": 3, "FM5005": 3, "IE8011": 3}}], "internship_prefix": ["MT401", "MT601"], "internship_max_credits": 6}, "open_questions": ["同一門課能否同時認列「系選修」與「學分學程」？(本程式預設可以，需向系辦確認)", "兩學程重疊的課(HR6090、IM5006、BA7041、FM3035、資料倉儲等)能否同時認列兩個學程？", "學分學程須在修業最後一學期截止日前提出申請"]};
+const DEPTS = [{"id": "ba_114", "dept": "企業管理學系", "entry_year": 114, "source": "https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf", "min_total_credits": 128, "required_total_check": 97, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}, {"codes": ["BA1003"], "name": "管理學", "credits": 3, "term": "1下"}, {"codes": ["BA2000"], "name": "財務管理", "credits": 3, "term": "2上"}, {"codes": ["BA2030"], "name": "行銷管理", "credits": 3, "term": "2上"}, {"codes": ["BA2004"], "name": "管理數學", "credits": 3, "term": "2上"}, {"codes": ["BA2015"], "name": "組織行為", "credits": 3, "term": "2上"}, {"codes": ["BA2014"], "name": "作業研究", "credits": 3, "term": "2下"}, {"codes": ["BA3005"], "name": "人力資源管理", "credits": 3, "term": "2下"}, {"codes": ["BA3004"], "name": "資訊管理", "credits": 3, "term": "2下"}, {"codes": ["BA3001"], "name": "生產與作業管理", "credits": 3, "term": "2下"}, {"codes": ["BA3000"], "name": "民法概要", "credits": 3, "term": "3上"}, {"codes": ["BA2016"], "name": "成本會計", "credits": 3, "term": "3上"}, {"codes": ["BA3003"], "name": "商事法", "credits": 3, "term": "3下"}, {"codes": ["BA4000"], "name": "企業政策", "credits": 3, "term": "4上"}, {"codes": ["BA4086"], "name": "企管專題", "credits": 3, "term": "4下"}]}, "choose_groups": [], "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "進修英文學分不列入本系畢業學分"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "note": "通識核心必修四領域中至少須修習一個領域(領域判定資料待補)"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "大一上一門、之後另一門"}], "elective_rules": [{"type": "program_core", "id": "選修：學程必修/必選", "min_courses": 2, "programs": ["ERP", "BIA"], "exclusive": true, "note": "從 ERP 學程必修(含多選二)或商業智慧與分析學程必修(含必選)擇 2 門"}, {"type": "prefix", "id": "選修：本系課號", "code_prefix": ["BA"], "min_courses": 3, "min_credits": 8, "exclusive": true, "note": "本系課號選修至少 3 門 8 學分（另 2 門見上一項，合計 5 門 14 學分）"}], "total_caps": [], "warnings": ["必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序", "共同科目及其他畢業條件(英文門檻等)請見學校應修科目表注意事項"]},{"id": "im_114", "dept": "資訊管理學系", "entry_year": 114, "source": "資管系 114 學年度入學應修科目表（學生提供 PDF）", "min_total_credits": 128, "required_total_check": 100, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["IM1001"], "name": "計算機概論I", "credits": 3, "term": "1上"}, {"codes": ["IM1023"], "name": "程式設計", "credits": 3, "term": "1下"}, {"codes": ["IM1018"], "name": "資訊管理導論", "credits": 3, "term": "1下"}, {"codes": ["IM2046"], "name": "作業系統", "credits": 3, "term": "2上"}, {"codes": ["IM2011"], "name": "資料與檔案結構", "credits": 3, "term": "2上"}, {"codes": ["IM2002"], "name": "資料庫管理", "credits": 3, "term": "2下"}, {"codes": ["IM3061"], "name": "企業資料通訊", "credits": 3, "term": "2下"}, {"codes": ["IM3059"], "name": "行銷學", "credits": 3, "term": "3上"}, {"codes": ["IM3069"], "name": "系統分析與設計", "credits": 3, "term": "3上"}, {"codes": ["IM3003"], "name": "作業研究I", "credits": 3, "term": "3上"}, {"codes": ["IM3070"], "name": "組織行為", "credits": 3, "term": "3上"}, {"codes": ["IM3078"], "name": "人工智慧與機器學習", "credits": 3, "term": "3下"}, {"codes": ["IM2037"], "name": "演算法", "credits": 3, "term": "3下"}, {"codes": ["IM3031"], "name": "電子商務", "credits": 3, "term": "3下"}, {"codes": ["IM3028"], "name": "資訊系統發展專題I", "credits": 3, "term": "3下"}, {"codes": ["IM4001"], "name": "資訊系統發展專題II", "credits": 3, "term": "4上"}, {"codes": ["IM4048"], "name": "管理資訊系統", "credits": 3, "term": "4上"}]}, "choose_groups": [{"id": "必選課", "pick": 3, "elective": true, "courses": [{"codes": ["IM1013"], "name": "初階程式設計", "credits": 3, "term": "未標示"}, {"codes": ["IM3029"], "name": "網頁程式設計", "credits": 3, "term": "未標示"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}]}], "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "可修大一英文管理課群 6 學分或英文系其他課程，不得以第二外語抵免；進修英文不列入"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "overflow_max": 4, "note": "通識核心必修四大領域中至少須修習一個領域；超修通識至多認列 4 學分（算在外系 12 學分內）"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "大一上一門、之後另一門"}], "elective_rules": [], "total_caps": [{"id": "外系選修至多認列", "exclude_prefix": ["IM"], "max": 12, "sub_caps": [{"code_prefix": ["MT401", "MT601"], "max": 3, "label": "MT 企業實習"}], "note": "選修只認定外系 12 學分（含超修通識至多 4、企業實習至多 3），其餘須修本系選修"}], "warnings": ["共同科目及其他畢業條件請見學校應修科目表注意事項"]},{"id": "fm_113", "dept": "財務金融學系", "entry_year": 113, "source": "財金系 113 學年度入學應修科目表（學生提供 PDF）", "min_total_credits": 128, "required_total_check": 85, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}, {"codes": ["FM1011"], "name": "財務金融概論", "credits": 3, "term": "1下"}, {"codes": ["FM2031"], "name": "財務管理(上)", "credits": 3, "term": "2上"}, {"codes": ["FM2032"], "name": "財務管理(下)", "credits": 3, "term": "2下"}, {"codes": ["FM2003"], "name": "個體,總體經濟學(上)", "credits": 3, "term": "2上"}, {"codes": ["FM2004"], "name": "個體,總體經濟學(下)", "credits": 3, "term": "2下"}, {"codes": ["FM3017"], "name": "投資學", "credits": 3, "term": "3上"}, {"codes": ["FM3002"], "name": "期貨與選擇權", "credits": 3, "term": "3上"}, {"codes": ["FM4001"], "name": "國際財務管理", "credits": 3, "term": "3下"}, {"codes": ["FM3036"], "name": "金融機構與市場", "credits": 3, "term": "3上"}, {"codes": ["FM3001"], "name": "財務報表分析", "credits": 3, "term": "4上"}]}, "choose_groups": [{"id": "系訂選修：法律三擇二", "pick": 2, "elective": true, "courses": [{"codes": ["FM2009"], "name": "民法概要", "credits": 3, "term": "未標示"}, {"codes": ["FM3004"], "name": "商事法", "credits": 3, "term": "未標示"}, {"codes": ["FM4013"], "name": "證券金融法規", "credits": 3, "term": "未標示"}]}, {"id": "系訂選修：管理二擇一", "pick": 1, "elective": true, "courses": [{"codes": ["FM2036"], "name": "組織行為", "credits": 3, "term": "未標示"}, {"codes": ["FM3011"], "name": "行銷管理", "credits": 3, "term": "未標示"}]}], "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "新生外文可從三種外文課程中任選一種；進修英文不列入畢業學分"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "note": "通識核心必修四大領域中至少須修習一個領域"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "大一上一門、之後另一門"}], "elective_rules": [{"type": "elective_total", "id": "選修總學分", "min_credits": 43, "exclude_attr": ["通識"], "note": "至少修習並通過選修 43 學分（不含通識與教育學程）"}, {"type": "prefix", "id": "系訂選修(FM 課號)", "code_prefix": ["FM"], "min_credits": 18, "exclusive": false, "include_choose": true, "note": "43 學分中須含系訂選修 18 學分以上（含上面的擇二、擇一課程）"}, {"type": "program_set", "id": "管院數位素養", "min_credits": 6, "programs": ["ERP", "BIA"], "exclude_prefix": ["FM"], "note": "另可認列「金融科技」學程 IM 開頭課程、系課委會承認之數位課程（本工具尚未納入，請向系辦確認）"}], "total_caps": [], "warnings": ["共同科目及其他畢業條件請見學校應修科目表注意事項", "此為 113 學年度入學版本"]},{"id": "ec_114", "dept": "經濟學系", "entry_year": 114, "source": "經濟系 114 學年度入學應修科目表（學生提供 PDF）", "min_total_credits": 128, "required_total_check": 85, "required_courses": {"院訂必修": [{"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1下"}, {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"}, {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"}, {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"}, {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"}, {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"}], "系訂必修": [{"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"}, {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"}, {"codes": ["EC2003"], "name": "個體經濟學(上)", "credits": 3, "term": "2上"}, {"codes": ["EC2004"], "name": "個體經濟學(下)", "credits": 3, "term": "2下"}, {"codes": ["EC2005"], "name": "總體經濟學(上)", "credits": 3, "term": "2上"}, {"codes": ["EC2006"], "name": "總體經濟學(下)", "credits": 3, "term": "2下"}, {"codes": ["EC3072"], "name": "國際金融", "credits": 3, "term": "3上"}, {"codes": ["EC3071"], "name": "國際貿易", "credits": 3, "term": "3下"}, {"codes": ["EC4018"], "name": "當前經濟議題", "credits": 3, "term": "4上"}]}, "choose_groups": [{"id": "系訂必修：六科擇三", "pick": 3, "courses": [{"codes": ["EC3077"], "name": "貨幣銀行學", "credits": 3, "term": "3上"}, {"codes": ["EC2054"], "name": "中央銀行與金融機構", "credits": 3, "term": "3下"}, {"codes": ["EC3112"], "name": "公共經濟學", "credits": 3, "term": "3上"}, {"codes": ["EC3079"], "name": "財政學", "credits": 3, "term": "3下"}, {"codes": ["EC3117"], "name": "資料分析", "credits": 3, "term": "3上"}, {"codes": ["EC3018"], "name": "計量經濟學", "credits": 3, "term": "3下"}]}], "credit_buckets": [{"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}}, {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]}, "exclude_name_contains": ["進修英文"], "note": "一律必修「大一英文」管理課群 6 學分；進修英文不列入畢業學分"}, {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]}, "overflow_max": 6, "note": "核心必修須在四大領域中任選三領域、各至少一門；經濟學相關課程不計入通識（清單請洽系辦）；超修通識至多認列 6 學分"}], "count_requirements": [{"id": "體育", "min_count": 5, "match": {"attr": ["體育"]}, "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"}, {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]}, "note": "大一上一門、之後另一門"}], "elective_rules": [{"type": "prefix", "id": "本系選修", "code_prefix": ["EC"], "min_credits": 23, "exclusive": true, "note": "修業期限內至少修習並通過本系選修 23 學分"}, {"type": "program_set", "id": "管院數位素養", "min_credits": 6, "programs": ["ERP", "BIA"], "exclude_prefix": ["EC"], "note": "另可認列「金融科技」學程 IM 開頭課程、系課委會承認之數位課程（本工具尚未納入，請向系辦確認）"}], "total_caps": [], "warnings": ["共同科目及其他畢業條件請見學校應修科目表注意事項"]}].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
+const COMING = ["其他科系：提供應修科目表即可加入"];
 const SAMPLE = "學期成績\n第114學年度第1學期 (114年9月至115年1月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nCL0201\tZ\t國文（B）：中文寫作\nChinese (B): Chinese writing\t必修\t學士班\t2\t75.00\t51.50\t-\nLN1005\tI\t大一英文:管理課群\nFreshman English as an Introduction to Management\t必修\t學士班\t3\t95.00\t46.05\t-\nMA1005\tB\t微積分\nCalculus\t必修\t學士班\t3\t69.00\t46.36\t-\nMT1011\tA\t經濟學\nEconomics\t必修\t學士班\t3\t77.00\t51.37\t-\nMT1021\tA\t企業概論\nIntroduction to Business\t必修\t學士班\t3\t85.00\t57.40\tEMI\nMT1031\tA\t會計學\nAccounting\t必修\t學士班\t3\t66.00\t46.86\t-\nMT1051\tA\t程式設計：Python\nAn Introduction to Computing: Python\t必修\t學士班\t3\t67.00\t48.35\t-\nCC0424\t\t社會參與之導航與探索\nSocialEngagement:AnIntroduction\t通識\t學士班\t2\t91.00\t54.41\t-\nPE1011\tD\t大一體育\nFreshman PE I\t體育\t學士班\t0\t82.00\t59.22\t-\nSC0003\tU\t服務學習課程\nStudent Service-Learning\t勞動服務\t學士班\t0\t勞動服務通過\t勞動服務通過\t-\n操行成績：(範例資料已移除)\n第114學年度第2學期 (115年2月至115年6月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nBA1003\tA\t管理學\nManagement\t必修\t學士班\t3\t68.00\t53.66\t-\nCL0137\t\t國文（A）經典閱讀：近現代散文選讀\nChinese (A): The Classification Analysis of Modern Prose\t必修\t學士班\t3\t76.00\t50.95\t-\nLN1006\tI\t大一英文:管理課群\nFreshman English as an Introduction to Management\t必修\t學士班\t3\t83.00\t59.64\t-\nMA1006\tA\t微積分\nCalculus\t必修\t學士班\t3\t66.00\t45.70\t-\nMT1012\tA\t經濟學\nEconomics\t必修\t學士班\t3\t94.00\t57.88\t-\nMT1032\tA\t會計學\nAccounting\t必修\t學士班\t3\t81.00\t49.34\t-\nGS3096\t\t人工智慧與公共治理\nAI and Public Governance\t通識\t學士班\t2\t71.00\t47.16\t-\nGS4521\t\t人工智慧與商業運用\nArtificial Intelligence and Commercial Applications\t通識\t學士班\t2\t66.00\t46.77\t-\nPE1022\tD\t大一體育\nFreshman PE II\t體育\t學士班\t0\t67.00\t49.63\t-\nSC0004\tU\t服務學習課程\nStudent Service-Learning\t勞動服務\t學士班\t0\t勞動服務通過\t勞動服務通過\t-\n第115學年度第1學期 (115年9月至116年1月)\n課號\t班別\t課名\t課程屬性\t學制屬性\t學分數\t成績\tT分數\t備註\nBA2000\tA\t財務管理\nFinancial Management\t必修\t學士班\t3\t未到\t\t-\nBA2004\tA\t管理數學\nManagerial Mathematics\t必修\t學士班\t3\t未到\t\t-\nBA2015\tA\t組織行為\nOrganizational Behavior\t必修\t學士班\t3\t未到\t\t-\nBA2030\tA\t行銷管理\nMarketing Management\t必修\t學士班\t3\t未到\t\t-\nIM2046\t\t作業系統\nOperating systems\t必修\t學士班\t3\t未到\t\t-\nMT2041\tA\t統計學\nStatistics\t必修\t學士班\t3\t未到\t\t-\nGS3073\t\tAI人工智慧導論\nIntroduction to Artificial Intelligence\t通識\t學士班\t3\t未到\t\t同步遠距教學\nGS4504\tA\t設計思考與行動APP程式設計應用\nDesign Thinking and Mobile Application Programming Design\t通識\t學士班\t2\t未到\t\t-\nGS4519\tB\t機器學習概論\nIntroduction to machine learning\t通識\t學士班\t2\t未到\t\t-\n";
 
 const $ = (id) => document.getElementById(id);
@@ -453,7 +513,7 @@ function initSelect() {
   const sel = $("dept");
   sel.innerHTML = DEPTS.map((d) => `<option value="${d.id}">${esc(d.label)}</option>`).join("")
     + COMING.map((c) => `<option disabled>${esc(c)}（尚未支援）</option>`).join("");
-  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); run(); });
+  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); showSources(); run(); });
   state.dept = deptOf(sel.value);
 }
 
@@ -486,11 +546,23 @@ function render() {
 
   let rows = "";
   for (const [g, v] of Object.entries(rep.required)) rows += reqRow(g, v.done_credits, v.need_credits, " 學分");
-  rep.buckets.forEach((b) => (rows += reqRow(b.id, b.got, b.need, " 學分", b.note)));
+  rep.choose.forEach((g) => (rows += reqRow(g.id, g.got, g.pick, " 門")));
+  rep.buckets.forEach((b) => {
+    const over = b.overflow ? `超修 ${b.overflow} 學分${b.overflow_max !== null ? `，至多認列 ${b.overflow_max}` : ""}。` : "";
+    rows += reqRow(b.id, b.got, b.need, " 學分", over + (b.note || ""));
+  });
   rep.counts.forEach((c) => (rows += reqRow(c.id, c.got, c.need, " 次", c.note)));
-  const e = rep.electives;
-  rows += reqRow("選修：本系課號", e.dept_courses, e.dept_need.min_courses, " 門", `另需合計 ${e.dept_need.min_credits} 學分，目前 ${e.dept_credits} 學分`);
-  rows += reqRow("選修：學程必修/必選", e.program_courses.length, e.program_need.min_courses, " 門", e.program_need.from);
+  rep.electives.forEach((e) => {
+    if (e.need_courses) {
+      const extra = e.need_credits ? `另需合計 ${e.need_credits} 學分，目前 ${e.got_credits} 學分。` : "";
+      rows += reqRow(e.id, e.got_courses, e.need_courses, " 門", extra + (e.note || ""));
+    } else rows += reqRow(e.id, e.got_credits, e.need_credits, " 學分", e.note);
+  });
+  rep.caps.forEach((c) => {
+    const over = c.got > c.max;
+    rows += `<div class="req"><span class="name">${esc(c.id)} <span class="pill ${over ? "ask" : "ok"}">${over ? `超出 ${c.got - c.max} 學分不計` : "未超過上限"}</span></span>
+      <span class="val">${c.counted} / 上限 ${c.max}</span>${c.note ? `<span class="note">${esc(c.note)}</span>` : ""}</div>`;
+  });
   rows += `<div class="req"><span class="name">自由選修（其他及格課程）</span><span class="val">${rep.free_elective_credits} 學分</span></div>`;
   $("reqs").innerHTML = rows;
 
@@ -498,7 +570,9 @@ function render() {
   Object.values(rep.required).forEach((v) => v.todo.forEach((c) => (byTerm[c.term] ||= []).push(c)));
   const order = ["1上", "1下", "2上", "2下", "3上", "3下", "4上", "4下"];
   const terms = Object.keys(byTerm).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  $("todo").innerHTML = terms.length ? terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
+  const chooseLeft = rep.choose.filter((g) => g.got < g.pick);
+  $("todo").innerHTML = (terms.length || chooseLeft.length) ? chooseLeft.map((g) => `<div class="term"><h3>${esc(g.id)}：還要 ${g.pick - g.got} 門，從下面挑</h3>
+    <div class="chips">${g.options.map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("") + terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
     <div class="chips">${byTerm[tm].map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("")
     : `<p class="notice">必修都修完了。</p>`;
 
@@ -547,8 +621,12 @@ function simulate() {
   const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true);
   const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
   let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
-  rows += line("本系課號選修", before.electives.dept_courses, after.electives.dept_courses, `/ ${after.electives.dept_need.min_courses} 門`);
-  rows += line("學程必修/必選", before.electives.program_courses.length, after.electives.program_courses.length, `/ ${after.electives.program_need.min_courses} 門`);
+  after.choose.forEach((g, i) => (rows += line(g.id, before.choose[i].got, g.got, `/ ${g.pick} 門`)));
+  after.electives.forEach((e, i) => {
+    const b = before.electives[i];
+    rows += e.need_courses ? line(e.id, b.got_courses, e.got_courses, `/ ${e.need_courses} 門`)
+                           : line(e.id, b.got_credits, e.got_credits, `/ ${e.need_credits} 學分`);
+  });
   for (const k of Object.keys(after.programs))
     rows += line(after.programs[k].name, before.programs[k].credits, after.programs[k].credits,
       `/ ${after.programs[k].need}${after.programs[k].done && !before.programs[k].done ? " 修畢" : ""}`);
@@ -587,10 +665,15 @@ async function initAI() {
   });
 }
 
+function showSources() {
+  const src = state.dept.rules.source;
+  const link = (u, label) => /^https?:/.test(u) ? `<a href="${esc(u)}">${esc(label)}</a>` : esc(u);
+  $("dept-src").innerHTML = `規則來源：${link(src, "系網站應修科目表")}`;
+  $("sources").innerHTML = [link(src, `${state.dept.rules.dept}應修科目表`),
+    ...Object.values(state.dept.programs).map((p) => link(p.source, p.name))].join("、");
+}
 initSelect();
-$("dept-src").innerHTML = `規則來源：<a href="${esc(state.dept.rules.source)}">系網站應修科目表</a>`;
-$("sources").innerHTML = [state.dept.rules.source, ...Object.values(state.dept.programs).map((p) => p.source)]
-  .map((u, i) => `<a href="${esc(u)}">${["應修科目表", "ERP 學程", "商業智慧與分析學程"][i] || "來源"}</a>`).join("、");
+showSources();
 $("paste").value = SAMPLE;
 $("run").addEventListener("click", run);
 $("project").addEventListener("change", run);

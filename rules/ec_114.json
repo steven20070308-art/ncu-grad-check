@@ -1,0 +1,292 @@
+{
+ "id": "ec_114",
+ "dept": "經濟學系",
+ "entry_year": 114,
+ "source": "經濟系 114 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 85,
+ "required_courses": {
+  "院訂必修": [
+   {
+    "codes": [
+     "MT1011"
+    ],
+    "name": "經濟學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1012"
+    ],
+    "name": "經濟學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT1021"
+    ],
+    "name": "企業概論",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT1031"
+    ],
+    "name": "會計學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1032"
+    ],
+    "name": "會計學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT2041"
+    ],
+    "name": "統計學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MT2042"
+    ],
+    "name": "統計學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MT1051"
+    ],
+    "name": "程式設計：Python",
+    "credits": 3,
+    "term": "1上"
+   }
+  ],
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1005"
+    ],
+    "name": "微積分(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1006"
+    ],
+    "name": "微積分(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "EC2003"
+    ],
+    "name": "個體經濟學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "EC2004"
+    ],
+    "name": "個體經濟學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "EC2005"
+    ],
+    "name": "總體經濟學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "EC2006"
+    ],
+    "name": "總體經濟學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "EC3072"
+    ],
+    "name": "國際金融",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "EC3071"
+    ],
+    "name": "國際貿易",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "EC4018"
+    ],
+    "name": "當前經濟議題",
+    "credits": 3,
+    "term": "4上"
+   }
+  ]
+ },
+ "choose_groups": [
+  {
+   "id": "系訂必修：六科擇三",
+   "pick": 3,
+   "courses": [
+    {
+     "codes": [
+      "EC3077"
+     ],
+     "name": "貨幣銀行學",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "EC2054"
+     ],
+     "name": "中央銀行與金融機構",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "EC3112"
+     ],
+     "name": "公共經濟學",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "EC3079"
+     ],
+     "name": "財政學",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "EC3117"
+     ],
+     "name": "資料分析",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "EC3018"
+     ],
+     "name": "計量經濟學",
+     "credits": 3,
+     "term": "3下"
+    }
+   ]
+  }
+ ],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "一律必修「大一英文」管理課群 6 學分；進修英文不列入畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "overflow_max": 6,
+   "note": "核心必修須在四大領域中任選三領域、各至少一門；經濟學相關課程不計入通識（清單請洽系辦）；超修通識至多認列 6 學分"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "大一上一門、之後另一門"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "prefix",
+   "id": "本系選修",
+   "code_prefix": [
+    "EC"
+   ],
+   "min_credits": 23,
+   "exclusive": true,
+   "note": "修業期限內至少修習並通過本系選修 23 學分"
+  },
+  {
+   "type": "program_set",
+   "id": "管院數位素養",
+   "min_credits": 6,
+   "programs": [
+    "ERP",
+    "BIA"
+   ],
+   "exclude_prefix": [
+    "EC"
+   ],
+   "note": "另可認列「金融科技」學程 IM 開頭課程、系課委會承認之數位課程（本工具尚未納入，請向系辦確認）"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項"
+ ]
+}

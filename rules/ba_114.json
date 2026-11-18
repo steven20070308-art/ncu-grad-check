@@ -1,62 +1,292 @@
 {
-  "dept": "企業管理學系",
-  "entry_year": 114,
-  "source": "https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf",
-  "min_total_credits": 128,
-  "required_courses": {
-    "院訂必修": [
-      {"codes": ["MT1011"], "name": "經濟學(上)", "credits": 3, "term": "1上"},
-      {"codes": ["MT1012"], "name": "經濟學(下)", "credits": 3, "term": "1下"},
-      {"codes": ["MT1021"], "name": "企業概論", "credits": 3, "term": "1上"},
-      {"codes": ["MT1031"], "name": "會計學(上)", "credits": 3, "term": "1上"},
-      {"codes": ["MT1032"], "name": "會計學(下)", "credits": 3, "term": "1下"},
-      {"codes": ["MT2041"], "name": "統計學(上)", "credits": 3, "term": "2上"},
-      {"codes": ["MT2042"], "name": "統計學(下)", "credits": 3, "term": "2下"},
-      {"codes": ["MT1051"], "name": "程式設計：Python", "credits": 3, "term": "1上"},
-      {"codes": ["BA4086"], "name": "企管專題", "credits": 3, "term": "4下"}
+ "id": "ba_114",
+ "dept": "企業管理學系",
+ "entry_year": 114,
+ "source": "https://ba.mgt.ncu.edu.tw/upfile/course/2/2025/202508141210444450964.pdf",
+ "min_total_credits": 128,
+ "required_total_check": 97,
+ "required_courses": {
+  "院訂必修": [
+   {
+    "codes": [
+     "MT1011"
     ],
-    "系訂必修": [
-      {"codes": ["MA1005"], "name": "微積分(上)", "credits": 3, "term": "1上"},
-      {"codes": ["MA1006"], "name": "微積分(下)", "credits": 3, "term": "1下"},
-      {"codes": ["BA1003"], "name": "管理學", "credits": 3, "term": "1下"},
-      {"codes": ["BA2000"], "name": "財務管理", "credits": 3, "term": "2上"},
-      {"codes": ["BA2030"], "name": "行銷管理", "credits": 3, "term": "2上"},
-      {"codes": ["BA2004"], "name": "管理數學", "credits": 3, "term": "2上"},
-      {"codes": ["BA2015"], "name": "組織行為", "credits": 3, "term": "2上"},
-      {"codes": ["BA2014"], "name": "作業研究", "credits": 3, "term": "2下"},
-      {"codes": ["BA3005"], "name": "人力資源管理", "credits": 3, "term": "2下"},
-      {"codes": ["BA3004"], "name": "資訊管理", "credits": 3, "term": "2下"},
-      {"codes": ["BA3001"], "name": "生產與作業管理", "credits": 3, "term": "2下"},
-      {"codes": ["BA3000"], "name": "民法概要", "credits": 3, "term": "3上"},
-      {"codes": ["BA2016"], "name": "成本會計", "credits": 3, "term": "3上"},
-      {"codes": ["BA3003"], "name": "商事法", "credits": 3, "term": "3下"},
-      {"codes": ["BA4000"], "name": "企業政策", "credits": 3, "term": "4上"}
-    ]
-  },
-  "credit_buckets": [
-    {"id": "國文", "min_credits": 5, "match": {"code_prefix": ["CL"]}},
-    {"id": "外文", "min_credits": 6, "match": {"code_prefix": ["LN"]},
-     "exclude_name_contains": ["進修英文"],
-     "note": "進修英文學分不列入本系畢業學分"},
-    {"id": "通識", "min_credits": 14, "match": {"attr": ["通識"]},
-     "note": "通識核心必修四領域中至少須修習一個領域(領域判定資料待補)"}
+    "name": "經濟學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1012"
+    ],
+    "name": "經濟學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT1021"
+    ],
+    "name": "企業概論",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1031"
+    ],
+    "name": "會計學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1032"
+    ],
+    "name": "會計學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT2041"
+    ],
+    "name": "統計學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MT2042"
+    ],
+    "name": "統計學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MT1051"
+    ],
+    "name": "程式設計：Python",
+    "credits": 3,
+    "term": "1上"
+   }
   ],
-  "count_requirements": [
-    {"id": "體育", "min_count": 5, "match": {"attr": ["體育"]},
-     "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"},
-    {"id": "服務學習", "min_count": 2, "match": {"code_prefix": ["SC"]},
-     "note": "表格標示大一上一門、之後另一門(跨欄)，次數待向系辦確認"}
-  ],
-  "electives": {
-    "min_courses": 5,
-    "min_credits": 14,
-    "dept_part": {"min_courses": 3, "min_credits": 8, "code_prefix": ["BA"]},
-    "program_part": {"min_courses": 2,
-      "from": "ERP學程必選課(擇二)或商業智慧與分析學程必選課",
-      "note": "學程必修/必選課號見 rules/programs_114.json；同一門課能否同時認列系選修與學程，需向系辦確認"}
-  },
-  "warnings": [
-    "必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序",
-    "共同科目及其他畢業條件(英文門檻等)請見學校應修科目表注意事項"
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1005"
+    ],
+    "name": "微積分(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1006"
+    ],
+    "name": "微積分(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "BA1003"
+    ],
+    "name": "管理學",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "BA2000"
+    ],
+    "name": "財務管理",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "BA2030"
+    ],
+    "name": "行銷管理",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "BA2004"
+    ],
+    "name": "管理數學",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "BA2015"
+    ],
+    "name": "組織行為",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "BA2014"
+    ],
+    "name": "作業研究",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "BA3005"
+    ],
+    "name": "人力資源管理",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "BA3004"
+    ],
+    "name": "資訊管理",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "BA3001"
+    ],
+    "name": "生產與作業管理",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "BA3000"
+    ],
+    "name": "民法概要",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "BA2016"
+    ],
+    "name": "成本會計",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "BA3003"
+    ],
+    "name": "商事法",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "BA4000"
+    ],
+    "name": "企業政策",
+    "credits": 3,
+    "term": "4上"
+   },
+   {
+    "codes": [
+     "BA4086"
+    ],
+    "name": "企管專題",
+    "credits": 3,
+    "term": "4下"
+   }
   ]
+ },
+ "choose_groups": [],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "進修英文學分不列入本系畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "note": "通識核心必修四領域中至少須修習一個領域(領域判定資料待補)"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "大一上一門、之後另一門"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "program_core",
+   "id": "選修：學程必修/必選",
+   "min_courses": 2,
+   "programs": [
+    "ERP",
+    "BIA"
+   ],
+   "exclusive": true,
+   "note": "從 ERP 學程必修(含多選二)或商業智慧與分析學程必修(含必選)擇 2 門"
+  },
+  {
+   "type": "prefix",
+   "id": "選修：本系課號",
+   "code_prefix": [
+    "BA"
+   ],
+   "min_courses": 3,
+   "min_credits": 8,
+   "exclusive": true,
+   "note": "本系課號選修至少 3 門 8 學分（另 2 門見上一項，合計 5 門 14 學分）"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序",
+  "共同科目及其他畢業條件(英文門檻等)請見學校應修科目表注意事項"
+ ]
 }

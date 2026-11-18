@@ -1,0 +1,328 @@
+{
+ "id": "im_114",
+ "dept": "資訊管理學系",
+ "entry_year": 114,
+ "source": "資管系 114 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 100,
+ "required_courses": {
+  "院訂必修": [
+   {
+    "codes": [
+     "MT1011"
+    ],
+    "name": "經濟學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MT1012"
+    ],
+    "name": "經濟學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MT1021"
+    ],
+    "name": "企業概論",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1031"
+    ],
+    "name": "會計學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1032"
+    ],
+    "name": "會計學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT2041"
+    ],
+    "name": "統計學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MT2042"
+    ],
+    "name": "統計學(下)",
+    "credits": 3,
+    "term": "2下"
+   }
+  ],
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1005"
+    ],
+    "name": "微積分(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "IM1001"
+    ],
+    "name": "計算機概論I",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "IM1023"
+    ],
+    "name": "程式設計",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "IM1018"
+    ],
+    "name": "資訊管理導論",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "IM2046"
+    ],
+    "name": "作業系統",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "IM2011"
+    ],
+    "name": "資料與檔案結構",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "IM2002"
+    ],
+    "name": "資料庫管理",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "IM3061"
+    ],
+    "name": "企業資料通訊",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "IM3059"
+    ],
+    "name": "行銷學",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "IM3069"
+    ],
+    "name": "系統分析與設計",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "IM3003"
+    ],
+    "name": "作業研究I",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "IM3070"
+    ],
+    "name": "組織行為",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "IM3078"
+    ],
+    "name": "人工智慧與機器學習",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "IM2037"
+    ],
+    "name": "演算法",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "IM3031"
+    ],
+    "name": "電子商務",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "IM3028"
+    ],
+    "name": "資訊系統發展專題I",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "IM4001"
+    ],
+    "name": "資訊系統發展專題II",
+    "credits": 3,
+    "term": "4上"
+   },
+   {
+    "codes": [
+     "IM4048"
+    ],
+    "name": "管理資訊系統",
+    "credits": 3,
+    "term": "4上"
+   }
+  ]
+ },
+ "choose_groups": [
+  {
+   "id": "必選課",
+   "pick": 3,
+   "elective": true,
+   "courses": [
+    {
+     "codes": [
+      "IM1013"
+     ],
+     "name": "初階程式設計",
+     "credits": 3,
+     "term": "未標示"
+    },
+    {
+     "codes": [
+      "IM3029"
+     ],
+     "name": "網頁程式設計",
+     "credits": 3,
+     "term": "未標示"
+    },
+    {
+     "codes": [
+      "MA1006"
+     ],
+     "name": "微積分(下)",
+     "credits": 3,
+     "term": "1下"
+    }
+   ]
+  }
+ ],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "可修大一英文管理課群 6 學分或英文系其他課程，不得以第二外語抵免；進修英文不列入"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "overflow_max": 4,
+   "note": "通識核心必修四大領域中至少須修習一個領域；超修通識至多認列 4 學分（算在外系 12 學分內）"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "大一上一門、之後另一門"
+  }
+ ],
+ "elective_rules": [],
+ "total_caps": [
+  {
+   "id": "外系選修至多認列",
+   "exclude_prefix": [
+    "IM"
+   ],
+   "max": 12,
+   "sub_caps": [
+    {
+     "code_prefix": [
+      "MT401",
+      "MT601"
+     ],
+     "max": 3,
+     "label": "MT 企業實習"
+    }
+   ],
+   "note": "選修只認定外系 12 學分（含超修通識至多 4、企業實習至多 3），其餘須修本系選修"
+  }
+ ],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項"
+ ]
+}

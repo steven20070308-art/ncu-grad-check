@@ -89,8 +89,8 @@
   // 課號 → 名稱與學分（手動輸入時查學分用）
   function buildCatalog(rules, programs) {
     const cat = {};
-    Object.values(rules.required_courses).flat().forEach((c) =>
-      c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
+    Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
+      .forEach((c) => c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
     Object.values(programs).forEach((p) => p.groups.forEach((g) =>
       Object.entries(g.courses).forEach(([code, cr]) => { if (!cat[code]) cat[code] = { credits: cr }; })));
     return cat;
@@ -113,11 +113,17 @@
              done: credits >= program.min_credits && groups.every((g) => g.got >= g.need) };
   }
 
+  const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
+  const notEnglishPlus = (r) => !r.name.includes("進修英文");
+  const hasPrefix = (code, list) => (list || []).some((p) => code.startsWith(p));
+
+  /* 規則引擎（各系共用）。認列順序：
+   * 必修 → 擇N必修 → 國文/外文/通識 → 體育/服務學習 → 選修規則 → 其餘為自由選修。
+   * used：已被必修、共同科目認列的課；electUsed：已被選修類「擇N」或獨占型選修規則認列的課。 */
   function check(rules, transcript, programs, project) {
     const records = transcript.filter((r) => passed(r, project));
-    const used = new Set();
-    const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
-    const rep = { required: {}, buckets: [], counts: [] };
+    const used = new Set(), electUsed = new Set();
+    const rep = { required: {}, choose: [], buckets: [], counts: [], electives: [], caps: [] };
 
     for (const [group, courses] of Object.entries(rules.required_courses)) {
       const done = [], todo = [];
@@ -128,32 +134,83 @@
       rep.required[group] = { done_credits: done.reduce((s, c) => s + c.credits, 0),
                               need_credits: courses.reduce((s, c) => s + c.credits, 0), todo };
     }
+    for (const g of rules.choose_groups || []) {
+      const codes = g.courses.flatMap((c) => c.codes);
+      const hits = records.filter((r) => codes.includes(r.code) && !used.has(r.code) && !electUsed.has(r.code)).slice(0, g.pick);
+      hits.forEach((r) => (g.elective ? electUsed : used).add(r.code));
+      const have = hits.map((r) => r.code);
+      rep.choose.push({ id: g.id, pick: g.pick, got: hits.length, elective: !!g.elective, courses: have,
+                        options: g.courses.filter((c) => !c.codes.some((x) => have.includes(x))) });
+    }
+    let bucketExcess = 0, overflowForCaps = 0;
     for (const b of rules.credit_buckets) {
       const hits = records.filter((r) => !used.has(r.code) && matches(r, b));
       hits.forEach((r) => used.add(r.code));
-      rep.buckets.push({ id: b.id, got: sum(hits), need: b.min_credits, courses: hits.map((r) => r.code), note: b.note || null });
+      const got = sum(hits);
+      const over = Math.max(0, got - b.min_credits);
+      const overMax = b.overflow_max ?? Infinity;
+      bucketExcess += Math.max(0, over - overMax);
+      if (b.overflow_max !== undefined) overflowForCaps += Math.min(over, overMax);
+      rep.buckets.push({ id: b.id, got, need: b.min_credits, courses: hits.map((r) => r.code), note: b.note || null,
+                         overflow: over, overflow_max: b.overflow_max ?? null });
     }
     for (const c of rules.count_requirements) {
       const hits = records.filter((r) => matches(r, c));
       hits.forEach((r) => used.add(r.code));
       rep.counts.push({ id: c.id, got: hits.length, need: c.min_count, note: c.note || null });
     }
-    const e = rules.electives;
-    const core = new Set();
-    Object.values(programs).forEach((p) => p.groups.forEach((g) => {
-      if (g.id !== "選修") Object.keys(g.courses).forEach((k) => core.add(k));
-    }));
-    const prog = records.filter((r) => !used.has(r.code) && core.has(r.code)).slice(0, e.program_part.min_courses);
-    prog.forEach((r) => used.add(r.code));
-    const dept = records.filter((r) => !used.has(r.code) && e.dept_part.code_prefix.some((p) => r.code.startsWith(p)));
-    dept.forEach((r) => used.add(r.code));
-    rep.electives = { dept_courses: dept.length, dept_credits: sum(dept), dept_need: e.dept_part,
-                      program_courses: prog.map((r) => r.code), program_need: e.program_part };
-    const free = records.filter((r) => !used.has(r.code) && r.credits > 0);
+
+    const programSet = (names, coreOnly, exclude) => {
+      const set = new Set();
+      names.forEach((n) => (programs[n]?.groups || []).forEach((g) => {
+        if (coreOnly && g.id === "選修") return;
+        Object.keys(g.courses).forEach((k) => { if (!hasPrefix(k, exclude)) set.add(k); });
+      }));
+      return set;
+    };
+    for (const e of rules.elective_rules || []) {
+      let hits = [];
+      if (e.type === "program_core") {
+        const set = programSet(e.programs, true, []);
+        hits = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && set.has(r.code)).slice(0, e.min_courses);
+      } else if (e.type === "prefix") {
+        hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && hasPrefix(r.code, e.code_prefix)
+          && (!electUsed.has(r.code) || (!e.exclusive && e.include_choose)));
+      } else if (e.type === "program_set") {
+        const set = programSet(e.programs, false, e.exclude_prefix);
+        hits = records.filter((r) => !used.has(r.code) && set.has(r.code));
+      } else if (e.type === "elective_total") {
+        hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && !(e.exclude_attr || []).includes(r.attr));
+      }
+      if (e.exclusive) hits.forEach((r) => electUsed.add(r.code));
+      const res = { id: e.id, type: e.type, got_courses: hits.length, got_credits: sum(hits),
+                    need_courses: e.min_courses ?? null, need_credits: e.min_credits ?? null,
+                    courses: hits.map((r) => r.code), note: e.note || null };
+      res.done = (res.need_courses === null || res.got_courses >= res.need_courses)
+              && (res.need_credits === null || res.got_credits >= res.need_credits);
+      rep.electives.push(res);
+    }
+
+    const chooseCodes = new Set((rules.choose_groups || []).flatMap((g) => g.courses.flatMap((c) => c.codes)));
+    let capExcess = 0;
+    for (const cap of rules.total_caps || []) {
+      const pool = records.filter((r) => !used.has(r.code) && !chooseCodes.has(r.code) && r.credits > 0
+                                         && !hasPrefix(r.code, cap.exclude_prefix));
+      let credits = sum(pool) + overflowForCaps;
+      for (const sc of cap.sub_caps || []) {
+        const sub = sum(pool.filter((r) => hasPrefix(r.code, sc.code_prefix)));
+        credits -= Math.max(0, sub - sc.max);
+      }
+      const counted = Math.min(credits, cap.max);
+      capExcess += credits - counted + (sum(pool) + overflowForCaps - credits);
+      rep.caps.push({ id: cap.id, got: credits, max: cap.max, counted, note: cap.note || null });
+    }
+
+    const free = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && r.credits > 0);
     rep.free_elective_credits = sum(free);
-    rep.total = { got: sum(records.filter((r) => !r.name.includes("進修英文"))), need: rules.min_total_credits };
-    rep.earned = sum(transcript.filter((r) => passed(r, false) && !r.name.includes("進修英文")));
-    rep.ongoing = project ? sum(transcript.filter((r) => IN_PROGRESS.includes(String(r.grade).trim()))) : 0;
+    rep.total = { got: sum(records.filter(notEnglishPlus)) - bucketExcess - capExcess, need: rules.min_total_credits };
+    rep.earned = project ? check(rules, transcript, programs, false).total.got : rep.total.got;
+    rep.ongoing = rep.total.got - rep.earned;
     rep.failed = transcript.filter((r) => !passed(r, project) && !IN_PROGRESS.includes(String(r.grade).trim()));
     rep.programs = Object.fromEntries(Object.entries(programs).map(([k, p]) => [k, checkProgram(p, transcript, project)]));
     rep.notes = rules.warnings;
@@ -169,9 +226,13 @@
       required: Object.fromEntries(Object.entries(rep.required).map(([g, v]) => [g, {
         done: v.done_credits, need: v.need_credits,
         todo: v.todo.map((c) => `${c.name} ${c.codes[0]}（${c.term}）`) }])),
+      choose: rep.choose.map((g) => ({ id: g.id, got: g.got, need: g.pick, courses: g.courses,
+        "可選": g.options.map((c) => `${c.name} ${c.codes[0]}`) })),
       buckets: rep.buckets.map(({ id, got, need, note }) => ({ id, got, need, note })),
       counts: rep.counts.map(({ id, got, need, note }) => ({ id, got, need, note })),
-      electives: rep.electives,
+      electives: rep.electives.map(({ id, got_courses, got_credits, need_courses, need_credits, note }) =>
+        ({ id, got_courses, got_credits, need_courses, need_credits, note })),
+      caps: rep.caps,
       free_elective_credits: rep.free_elective_credits,
       programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, {
         name: v.name, credits: v.credits, need: v.need, done: v.done,

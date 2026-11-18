@@ -173,7 +173,7 @@ footer a { color: var(--accent); }
 
       <section class="panel" aria-labelledby="prog-title">
         <h2 id="prog-title">學分學程</h2>
-        <p class="hint">選修規定中有 2 門要從學程必修/必選課挑，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
+        <p class="hint">管理學院各系的選修或「數位素養」規定都會用到這兩個學程的課，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
         <div class="grid2" id="progs"></div>
       </section>
 
@@ -217,10 +217,9 @@ footer a { color: var(--accent); }
 <script>
 "use strict";
 const G = window.GradCheck;
-const DEPTS = [
-  { id: "ba_114", label: "企業管理學系｜114 學年度入學", rules: /*__RULES_BA_114__*/null, programs: /*__PROGRAMS_114__*/null },
-];
-const COMING = ["企業管理學系｜113 學年度入學", "資訊管理學系｜114 學年度入學", "經濟學系｜114 學年度入學"];
+const PROGRAMS = /*__PROGRAMS_114__*/null;
+const DEPTS = /*__DEPT_RULES__*/[].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
+const COMING = ["其他科系：提供應修科目表即可加入"];
 const SAMPLE = /*__SAMPLE_PASTE__*/"";
 
 const $ = (id) => document.getElementById(id);
@@ -239,7 +238,7 @@ function initSelect() {
   const sel = $("dept");
   sel.innerHTML = DEPTS.map((d) => `<option value="${d.id}">${esc(d.label)}</option>`).join("")
     + COMING.map((c) => `<option disabled>${esc(c)}（尚未支援）</option>`).join("");
-  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); run(); });
+  sel.addEventListener("change", () => { state.dept = deptOf(sel.value); showSources(); run(); });
   state.dept = deptOf(sel.value);
 }
 
@@ -272,11 +271,23 @@ function render() {
 
   let rows = "";
   for (const [g, v] of Object.entries(rep.required)) rows += reqRow(g, v.done_credits, v.need_credits, " 學分");
-  rep.buckets.forEach((b) => (rows += reqRow(b.id, b.got, b.need, " 學分", b.note)));
+  rep.choose.forEach((g) => (rows += reqRow(g.id, g.got, g.pick, " 門")));
+  rep.buckets.forEach((b) => {
+    const over = b.overflow ? `超修 ${b.overflow} 學分${b.overflow_max !== null ? `，至多認列 ${b.overflow_max}` : ""}。` : "";
+    rows += reqRow(b.id, b.got, b.need, " 學分", over + (b.note || ""));
+  });
   rep.counts.forEach((c) => (rows += reqRow(c.id, c.got, c.need, " 次", c.note)));
-  const e = rep.electives;
-  rows += reqRow("選修：本系課號", e.dept_courses, e.dept_need.min_courses, " 門", `另需合計 ${e.dept_need.min_credits} 學分，目前 ${e.dept_credits} 學分`);
-  rows += reqRow("選修：學程必修/必選", e.program_courses.length, e.program_need.min_courses, " 門", e.program_need.from);
+  rep.electives.forEach((e) => {
+    if (e.need_courses) {
+      const extra = e.need_credits ? `另需合計 ${e.need_credits} 學分，目前 ${e.got_credits} 學分。` : "";
+      rows += reqRow(e.id, e.got_courses, e.need_courses, " 門", extra + (e.note || ""));
+    } else rows += reqRow(e.id, e.got_credits, e.need_credits, " 學分", e.note);
+  });
+  rep.caps.forEach((c) => {
+    const over = c.got > c.max;
+    rows += `<div class="req"><span class="name">${esc(c.id)} <span class="pill ${over ? "ask" : "ok"}">${over ? `超出 ${c.got - c.max} 學分不計` : "未超過上限"}</span></span>
+      <span class="val">${c.counted} / 上限 ${c.max}</span>${c.note ? `<span class="note">${esc(c.note)}</span>` : ""}</div>`;
+  });
   rows += `<div class="req"><span class="name">自由選修（其他及格課程）</span><span class="val">${rep.free_elective_credits} 學分</span></div>`;
   $("reqs").innerHTML = rows;
 
@@ -284,7 +295,9 @@ function render() {
   Object.values(rep.required).forEach((v) => v.todo.forEach((c) => (byTerm[c.term] ||= []).push(c)));
   const order = ["1上", "1下", "2上", "2下", "3上", "3下", "4上", "4下"];
   const terms = Object.keys(byTerm).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  $("todo").innerHTML = terms.length ? terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
+  const chooseLeft = rep.choose.filter((g) => g.got < g.pick);
+  $("todo").innerHTML = (terms.length || chooseLeft.length) ? chooseLeft.map((g) => `<div class="term"><h3>${esc(g.id)}：還要 ${g.pick - g.got} 門，從下面挑</h3>
+    <div class="chips">${g.options.map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("") + terms.map((tm) => `<div class="term"><h3>建議 ${esc(tm.replace("上", " 上學期").replace("下", " 下學期")).replace(/^(\d)/, "大$1")}</h3>
     <div class="chips">${byTerm[tm].map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("")
     : `<p class="notice">必修都修完了。</p>`;
 
@@ -333,8 +346,12 @@ function simulate() {
   const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true);
   const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
   let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
-  rows += line("本系課號選修", before.electives.dept_courses, after.electives.dept_courses, `/ ${after.electives.dept_need.min_courses} 門`);
-  rows += line("學程必修/必選", before.electives.program_courses.length, after.electives.program_courses.length, `/ ${after.electives.program_need.min_courses} 門`);
+  after.choose.forEach((g, i) => (rows += line(g.id, before.choose[i].got, g.got, `/ ${g.pick} 門`)));
+  after.electives.forEach((e, i) => {
+    const b = before.electives[i];
+    rows += e.need_courses ? line(e.id, b.got_courses, e.got_courses, `/ ${e.need_courses} 門`)
+                           : line(e.id, b.got_credits, e.got_credits, `/ ${e.need_credits} 學分`);
+  });
   for (const k of Object.keys(after.programs))
     rows += line(after.programs[k].name, before.programs[k].credits, after.programs[k].credits,
       `/ ${after.programs[k].need}${after.programs[k].done && !before.programs[k].done ? " 修畢" : ""}`);
@@ -373,10 +390,15 @@ async function initAI() {
   });
 }
 
+function showSources() {
+  const src = state.dept.rules.source;
+  const link = (u, label) => /^https?:/.test(u) ? `<a href="${esc(u)}">${esc(label)}</a>` : esc(u);
+  $("dept-src").innerHTML = `規則來源：${link(src, "系網站應修科目表")}`;
+  $("sources").innerHTML = [link(src, `${state.dept.rules.dept}應修科目表`),
+    ...Object.values(state.dept.programs).map((p) => link(p.source, p.name))].join("、");
+}
 initSelect();
-$("dept-src").innerHTML = `規則來源：<a href="${esc(state.dept.rules.source)}">系網站應修科目表</a>`;
-$("sources").innerHTML = [state.dept.rules.source, ...Object.values(state.dept.programs).map((p) => p.source)]
-  .map((u, i) => `<a href="${esc(u)}">${["應修科目表", "ERP 學程", "商業智慧與分析學程"][i] || "來源"}</a>`).join("、");
+showSources();
 $("paste").value = SAMPLE;
 $("run").addEventListener("click", run);
 $("project").addEventListener("change", run);

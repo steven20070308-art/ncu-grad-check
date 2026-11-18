@@ -1,0 +1,326 @@
+{
+ "id": "fm_113",
+ "dept": "財務金融學系",
+ "entry_year": 113,
+ "source": "財金系 113 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 85,
+ "required_courses": {
+  "院訂必修": [
+   {
+    "codes": [
+     "MT1011"
+    ],
+    "name": "經濟學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1012"
+    ],
+    "name": "經濟學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT1021"
+    ],
+    "name": "企業概論",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1031"
+    ],
+    "name": "會計學(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MT1032"
+    ],
+    "name": "會計學(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MT2041"
+    ],
+    "name": "統計學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MT2042"
+    ],
+    "name": "統計學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MT1051"
+    ],
+    "name": "程式設計：Python",
+    "credits": 3,
+    "term": "1上"
+   }
+  ],
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1005"
+    ],
+    "name": "微積分(上)",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1006"
+    ],
+    "name": "微積分(下)",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "FM1011"
+    ],
+    "name": "財務金融概論",
+    "credits": 3,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "FM2031"
+    ],
+    "name": "財務管理(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "FM2032"
+    ],
+    "name": "財務管理(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "FM2003"
+    ],
+    "name": "個體,總體經濟學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "FM2004"
+    ],
+    "name": "個體,總體經濟學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "FM3017"
+    ],
+    "name": "投資學",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "FM3002"
+    ],
+    "name": "期貨與選擇權",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "FM4001"
+    ],
+    "name": "國際財務管理",
+    "credits": 3,
+    "term": "3下"
+   },
+   {
+    "codes": [
+     "FM3036"
+    ],
+    "name": "金融機構與市場",
+    "credits": 3,
+    "term": "3上"
+   },
+   {
+    "codes": [
+     "FM3001"
+    ],
+    "name": "財務報表分析",
+    "credits": 3,
+    "term": "4上"
+   }
+  ]
+ },
+ "choose_groups": [
+  {
+   "id": "系訂選修：法律三擇二",
+   "pick": 2,
+   "elective": true,
+   "courses": [
+    {
+     "codes": [
+      "FM2009"
+     ],
+     "name": "民法概要",
+     "credits": 3,
+     "term": "未標示"
+    },
+    {
+     "codes": [
+      "FM3004"
+     ],
+     "name": "商事法",
+     "credits": 3,
+     "term": "未標示"
+    },
+    {
+     "codes": [
+      "FM4013"
+     ],
+     "name": "證券金融法規",
+     "credits": 3,
+     "term": "未標示"
+    }
+   ]
+  },
+  {
+   "id": "系訂選修：管理二擇一",
+   "pick": 1,
+   "elective": true,
+   "courses": [
+    {
+     "codes": [
+      "FM2036"
+     ],
+     "name": "組織行為",
+     "credits": 3,
+     "term": "未標示"
+    },
+    {
+     "codes": [
+      "FM3011"
+     ],
+     "name": "行銷管理",
+     "credits": 3,
+     "term": "未標示"
+    }
+   ]
+  }
+ ],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "新生外文可從三種外文課程中任選一種；進修英文不列入畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "note": "通識核心必修四大領域中至少須修習一個領域"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "應修科目表標示大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "大一上一門、之後另一門"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "elective_total",
+   "id": "選修總學分",
+   "min_credits": 43,
+   "exclude_attr": [
+    "通識"
+   ],
+   "note": "至少修習並通過選修 43 學分（不含通識與教育學程）"
+  },
+  {
+   "type": "prefix",
+   "id": "系訂選修(FM 課號)",
+   "code_prefix": [
+    "FM"
+   ],
+   "min_credits": 18,
+   "exclusive": false,
+   "include_choose": true,
+   "note": "43 學分中須含系訂選修 18 學分以上（含上面的擇二、擇一課程）"
+  },
+  {
+   "type": "program_set",
+   "id": "管院數位素養",
+   "min_credits": 6,
+   "programs": [
+    "ERP",
+    "BIA"
+   ],
+   "exclude_prefix": [
+    "FM"
+   ],
+   "note": "另可認列「金融科技」學程 IM 開頭課程、系課委會承認之數位課程（本工具尚未納入，請向系辦確認）"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項",
+  "此為 113 學年度入學版本"
+ ]
+}

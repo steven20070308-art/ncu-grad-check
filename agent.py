@@ -173,29 +173,29 @@ def template_answer(rep):
 
 # ---------- 2. 路由 + 3. 計算 ----------
 def run_engine(records, rules, programs, project=True):
-    engine.PROJECT = project
-    main = engine.check(rules, records, programs)
-    progs = {k: engine.check_program(p, records) for k, p in programs.items()}
-    earned = sum(r["credits"] for r in records if engine.passed(r) and r["grade"] not in engine.IN_PROGRESS)
-    ongoing = sum(r["credits"] for r in records if r["grade"] in engine.IN_PROGRESS) if project else 0
+    """跑規則引擎，並整理成給 AI 的摘要（欄位與網頁版 slimReport 一致）。"""
+    main = engine.check(rules, records, programs, project)
     # 只留 AI 需要的欄位，降低 token 用量
-    slim = {
+    return {
         "total": main["total"],
-        "credit_status": {"已取得": earned, "修課中或試算(預計)": ongoing,
+        "credit_status": {"已取得": main["earned"], "修課中或試算(預計)": main["ongoing"],
                           "說明": "total.got 已包含修課中與試算的預計學分，尚未真正取得"},
         "required": {g: {"done": v["done_credits"], "need": v["need_credits"],
                          "todo": [f"{c['name']} {c['codes'][0]}（{c['term']}）" for c in v["todo"]]}
                      for g, v in main["required"].items()},
+        "choose": [{"id": g["id"], "got": g["got"], "need": g["pick"], "courses": g["courses"],
+                    "可選": [f"{c['name']} {c['codes'][0]}" for c in g["options"]]} for g in main["choose"]],
         "buckets": [{k: b[k] for k in ("id", "got", "need", "note")} for b in main["buckets"]],
         "counts": [{k: c[k] for k in ("id", "got", "need", "note")} for c in main["counts"]],
-        "electives": main["electives"],
+        "electives": [{k: e[k] for k in ("id", "got_courses", "got_credits", "need_courses", "need_credits", "note")}
+                      for e in main["electives"]],
+        "caps": main["caps"],
         "free_elective_credits": main["free_elective_credits"],
-        "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"],
-                         "done": v["done"], "groups": v["groups"],
-                         "必修必選可選課號": {g["id"]: list(g["courses"]) for g in programs[k]["groups"]
-                                         if g["id"] != "選修"}} for k, v in progs.items()},
+        "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"], "done": v["done"],
+                         "groups": [{k2: g[k2] for k2 in ("id", "got", "need", "courses")} for g in v["groups"]],
+                         "必修必選可選課號": {g["id"]: g["options"] for g in v["groups"] if g["id"] != "選修"}}
+                     for k, v in main["programs"].items()},
     }
-    return slim
 
 
 def find_course_codes(question):
@@ -218,7 +218,7 @@ def planned_records(codes, programs):
 
 
 # ---------- 4. 解釋 ----------
-SYSTEM_PROMPT = """你是中央大學企管系的畢業學分顧問。
+SYSTEM_PROMPT = """你是中央大學的畢業學分顧問。
 規則：
 1. 所有數字只能來自【檢核報告】，不可自行加總、推算或猜測。
 2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
