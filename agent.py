@@ -176,9 +176,13 @@ def run_engine(records, rules, programs, project=True):
     engine.PROJECT = project
     main = engine.check(rules, records, programs)
     progs = {k: engine.check_program(p, records) for k, p in programs.items()}
+    earned = sum(r["credits"] for r in records if engine.passed(r) and r["grade"] not in engine.IN_PROGRESS)
+    ongoing = sum(r["credits"] for r in records if r["grade"] in engine.IN_PROGRESS) if project else 0
     # 只留 AI 需要的欄位，降低 token 用量
     slim = {
         "total": main["total"],
+        "credit_status": {"已取得": earned, "修課中或試算(預計)": ongoing,
+                          "說明": "total.got 已包含修課中與試算的預計學分，尚未真正取得"},
         "required": {g: {"done": v["done_credits"], "need": v["need_credits"],
                          "todo": [f"{c['name']} {c['codes'][0]}（{c['term']}）" for c in v["todo"]]}
                      for g, v in main["required"].items()},
@@ -187,7 +191,9 @@ def run_engine(records, rules, programs, project=True):
         "electives": main["electives"],
         "free_elective_credits": main["free_elective_credits"],
         "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"],
-                         "done": v["done"], "groups": v["groups"]} for k, v in progs.items()},
+                         "done": v["done"], "groups": v["groups"],
+                         "必修必選可選課號": {g["id"]: list(g["courses"]) for g in programs[k]["groups"]
+                                         if g["id"] != "選修"}} for k, v in progs.items()},
     }
     return slim
 
@@ -217,7 +223,9 @@ SYSTEM_PROMPT = """你是中央大學企管系的畢業學分顧問。
 1. 所有數字只能來自【檢核報告】，不可自行加總、推算或猜測。
 2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
 3. 用繁體中文、口語、條列，先講結論再講細節，200 字以內。
-4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。"""
+4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。
+5. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
+6. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。"""
 
 
 def explain(question, report, mock=False):

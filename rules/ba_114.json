@@ -53,8 +53,7 @@
     "dept_part": {"min_courses": 3, "min_credits": 8, "code_prefix": ["BA"]},
     "program_part": {"min_courses": 2,
       "from": "ERP學程必選課(擇二)或商業智慧與分析學程必選課",
-      "course_list": null,
-      "note": "學程課號清單尚未取得，暫無法自動判定"}
+      "note": "學程必修/必選課號見 rules/programs_114.json；同一門課能否同時認列系選修與學程，需向系辦確認"}
   },
   "warnings": [
     "必修原則上須在本系修習；外系同名同學分課程須事先申請抵修，以三科為限，且須依本系修課順序",
