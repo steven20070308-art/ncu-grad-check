@@ -89,6 +89,9 @@ TIMEOUT = int(os.getenv("LLM_TIMEOUT", "90"))  # 秒；推理型模型回應較�
 RETRY_CODES = {429, 500, 502, 503, 504}  # 暫時性錯誤：服務忙碌、超過頻率限制
 
 
+LAST_MODEL = None
+
+
 class AIUnavailable(Exception):
     """AI 服務暫時無法使用（重試後仍失敗）。"""
 
@@ -97,12 +100,16 @@ def llm_chat(messages, mock=False):
     base, key, model = (os.getenv("LLM_BASE_URL"), os.getenv("LLM_API_KEY"), os.getenv("LLM_MODEL"))
     if mock or not (base and key and model):
         return mock_llm(messages)
-    models = [model] + [m for m in [os.getenv("LLM_FALLBACK_MODEL")] if m]
+    # 備援模型可用逗號分隔多個，依序嘗試
+    models = [model] + [m.strip() for m in os.getenv("LLM_FALLBACK_MODEL", "").split(",") if m.strip()]
     last_error = ""
     for m in models:
         for attempt in range(3):  # 每個模型最多試 3 次，間隔 2、4 秒
             try:
-                return _call(base, key, m, messages)
+                answer = _call(base, key, m, messages)
+                global LAST_MODEL
+                LAST_MODEL = m  # 記錄實際回答的模型（可能是備援）
+                return answer
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", "ignore")[:300]
                 if e.code not in RETRY_CODES:
@@ -296,7 +303,8 @@ if __name__ == "__main__":
     out = run(text, args.ask, rules, programs, args.mock)
     print(f"[解析] {out['parsed_courses']} 門課；無法解析 {len(out['parse_problems'])} 段")
     using_ai = not args.mock and all(os.getenv(k) for k in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"))
-    print(f"[路由] {out['route']}　[AI] {os.getenv('LLM_MODEL') if using_ai else '離線模擬'}\n")
+    ai_label = (LAST_MODEL or f"{os.getenv('LLM_MODEL')}(未成功)") if using_ai else "離線模擬"
+    print(f"[路由] {out['route']}　[AI] {ai_label}\n")
     if out.get("notice"):
         print(f"⚠ {out['notice']}")
     print(out["answer"])
