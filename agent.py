@@ -1,0 +1,249 @@
+"""畢業學分檢核 Agent：AI 負責「讀」與「說」，程式負責「算」與「查」。
+
+流程（每一步都可單獨測試）：
+  1. 解析 Parser    ：貼上的成績頁文字 → 修課紀錄 JSON（先用規則解析，失敗才交給 AI）
+  2. 路由 Router    ：問題裡有課號 → 走「試算」；沒有 → 走「解釋」
+  3. 計算 Engine    ：engine.py 規則引擎算學分（AI 不碰數字計算）
+  4. 解釋 Explainer ：AI 把檢核報告翻成白話，只能引用報告裡的數字
+  5. 稽核 Auditor   ：檢查 AI 回答中的每個數字都出現在報告裡，否則標記「請人工確認」
+
+AI 服務採 OpenAI 相容格式，可接 GitHub Models、Azure OpenAI、OpenAI 或本機 Ollama。
+設定環境變數（請放在 .env，不要上傳 GitHub）：
+  LLM_BASE_URL  例：https://models.github.ai/inference
+  LLM_API_KEY   你的金鑰
+  LLM_MODEL     例：openai/gpt-4o-mini
+沒有設定時自動使用離線模擬模式（--mock），方便測試流程。
+
+用法：
+  python agent.py --paste data/sample_paste.txt --ask "我還差多少學分才能畢業？"
+  python agent.py --paste data/sample_paste.txt --ask "如果我修 BA5040 BA7114 BA5061 會怎樣？"
+"""
+import argparse
+import json
+import os
+import re
+import urllib.error
+import urllib.request
+
+import engine
+
+def load_env(path=".env"):
+    """讀取 .env 檔（KEY=VALUE 格式）放進環境變數；不需要額外安裝套件。"""
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
+
+load_env()
+
+ATTRS = ("必修", "選修", "通識", "體育", "勞動服務", "軍訓")
+CODE_RE = re.compile(r"^([A-Z]{2,3}\d{4})\b", re.M)
+TERM_RE = re.compile(r"第\s*(\d+)\s*學年度第\s*(\d)\s*學期")
+
+
+# ---------- 1. 解析 ----------
+def parse_transcript(text):
+    """把從成績查詢頁複製貼上的文字解析成修課紀錄。
+
+    回傳 (records, problems)。problems 是解析不出來的片段，之後交給 AI 或人工處理。
+    """
+    records, problems = [], []
+    # 依「第X學年度第Y學期」切段，記住每門課屬於哪一學期
+    marks = [(m.start(), f"{m.group(1)}-{m.group(2)}") for m in TERM_RE.finditer(text)]
+    starts = [m.start() for m in CODE_RE.finditer(text)] + [len(text)]
+    for i, (code_m) in enumerate(CODE_RE.finditer(text)):
+        chunk = text[code_m.start():starts[i + 1]]
+        term = next((t for pos, t in reversed(marks) if pos < code_m.start()), "未知")
+        tokens = [t.strip() for t in re.split(r"[\t\n]", chunk) if t.strip()]
+        try:
+            a = next(j for j, t in enumerate(tokens) if t in ATTRS)
+            name = next(t for t in tokens[1:a] if re.search(r"[一-鿿]", t))
+            credits = int(tokens[a + 2])   # 屬性 → 學制 → 學分數
+            grade = tokens[a + 3]          # 成績（數字、未到、勞動服務通過…）
+        except (StopIteration, IndexError, ValueError):
+            problems.append(chunk.strip()[:80])
+            continue
+        records.append({"term": term, "code": code_m.group(1), "name": name,
+                        "attr": tokens[a], "credits": credits, "grade": grade})
+    return records, problems
+
+
+def agent_records_ok(text):
+    """防呆：一門課都解析不到時不該繼續，否則會回答「還差 128 學分」這種錯誤結論。"""
+    records, _ = parse_transcript(text)
+    return len(records) > 0
+
+
+# ---------- LLM 呼叫 ----------
+def llm_chat(messages, mock=False):
+    base, key, model = (os.getenv("LLM_BASE_URL"), os.getenv("LLM_API_KEY"), os.getenv("LLM_MODEL"))
+    if mock or not (base and key and model):
+        return mock_llm(messages)
+    req = urllib.request.Request(
+        base.rstrip("/") + "/chat/completions",
+        data=json.dumps({"model": model, "messages": messages, "temperature": 0.2}).encode(),
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.load(resp)["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        raise SystemExit(f"✗ AI 服務回傳錯誤 {e.code}：{e.read().decode('utf-8', 'ignore')[:300]}\n"
+                         "  401/403 多半是金鑰錯誤或權限不足；404 多半是網址或模型名稱打錯。")
+    except urllib.error.URLError as e:
+        raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+
+
+def mock_llm(messages):
+    """離線模擬：直接從報告挑重點組成回答，用來測試流程與稽核。"""
+    rep = json.loads(messages[-1]["content"].split("【檢核報告】", 1)[1])
+    t = rep["main"]["total"]
+    lines = [f"（模擬回答）你目前認列 {t['got']} 學分，畢業需要 {t['need']} 學分，還差 {t['need'] - t['got']} 學分。"]
+    for b in rep["main"]["buckets"]:
+        if b["got"] < b["need"]:
+            lines.append(f"{b['id']}還差 {b['need'] - b['got']} 學分。")
+    if "before" in rep:
+        lines.append(f"加入試算課程前是 {rep['before']['total']['got']} 學分。")
+    return "\n".join(lines)
+
+
+# ---------- 2. 路由 + 3. 計算 ----------
+def run_engine(records, rules, programs, project=True):
+    engine.PROJECT = project
+    main = engine.check(rules, records, programs)
+    progs = {k: engine.check_program(p, records) for k, p in programs.items()}
+    # 只留 AI 需要的欄位，降低 token 用量
+    slim = {
+        "total": main["total"],
+        "required": {g: {"done": v["done_credits"], "need": v["need_credits"],
+                         "todo": [f"{c['name']} {c['codes'][0]}（{c['term']}）" for c in v["todo"]]}
+                     for g, v in main["required"].items()},
+        "buckets": [{k: b[k] for k in ("id", "got", "need", "note")} for b in main["buckets"]],
+        "counts": [{k: c[k] for k in ("id", "got", "need", "note")} for c in main["counts"]],
+        "electives": main["electives"],
+        "free_elective_credits": main["free_elective_credits"],
+        "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"],
+                         "done": v["done"], "groups": v["groups"]} for k, v in progs.items()},
+    }
+    return slim
+
+
+def find_course_codes(question):
+    return re.findall(r"\b([A-Z]{2,3}\d{4})\b", question.upper())
+
+
+def planned_records(codes, programs):
+    """把問題中的課號變成「預計修」紀錄；學分從學程課表查，查不到預設 3 並標記。"""
+    lookup = {}
+    for p in programs.values():
+        for g in p["groups"]:
+            lookup.update(g["courses"])
+    recs, unknown = [], []
+    for c in codes:
+        if c not in lookup:
+            unknown.append(c)
+        recs.append({"term": "試算", "code": c, "name": f"試算課程 {c}", "attr": "選修",
+                     "credits": lookup.get(c, 3), "grade": "未到"})
+    return recs, unknown
+
+
+# ---------- 4. 解釋 ----------
+SYSTEM_PROMPT = """你是中央大學企管系的畢業學分顧問。
+規則：
+1. 所有數字只能來自【檢核報告】，不可自行加總、推算或猜測。
+2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
+3. 用繁體中文、口語、條列，先講結論再講細節，200 字以內。
+4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。"""
+
+
+def explain(question, report, mock=False):
+    messages = [{"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"學生問題：{question}\n【檢核報告】{json.dumps(report, ensure_ascii=False)}"}]
+    return llm_chat(messages, mock)
+
+
+# ---------- 5. 稽核 ----------
+def numbers_in(obj):
+    found = set()
+    if isinstance(obj, dict):
+        for v in obj.values():
+            found |= numbers_in(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            found |= numbers_in(v)
+    elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
+        found.add(int(obj))
+    elif isinstance(obj, str):
+        found |= {int(n) for n in re.findall(r"\d+", obj)}
+    return found
+
+
+def audit(answer, report, question):
+    """回答中出現、但報告和問題都沒有的數字 → 可能是 AI 自己算或編的。
+
+    允許「需求 - 已得」這種差值，因為那是報告兩欄直接相減。
+    """
+    allowed = numbers_in(report) | numbers_in(question)
+    allowed |= {a - b for a in allowed for b in allowed if 0 <= a - b <= 200}
+    in_answer = {int(n) for n in re.findall(r"\d+", re.sub(r"[A-Z]{2,3}\d{4}", "", answer))}
+    return sorted(in_answer - allowed)
+
+
+# ---------- 主流程 ----------
+def run(paste_text, question, rules, programs, mock=False):
+    records, problems = parse_transcript(paste_text)
+    result = {"parsed_courses": len(records), "parse_problems": problems}
+
+    codes = find_course_codes(question)
+    if codes:  # 路由：試算
+        plan, unknown = planned_records(codes, programs)
+        report = {"before": run_engine(records, rules, programs),
+                  "main": run_engine(records + plan, rules, programs),
+                  "planned": codes, "unknown_codes": unknown}
+        result["route"] = "試算"
+    else:      # 路由：解釋
+        report = {"main": run_engine(records, rules, programs)}
+        result["route"] = "解釋"
+
+    answer = explain(question, report, mock)
+    suspicious = audit(answer, report, question)
+    result.update({"answer": answer, "audit_flags": suspicious, "report": report})
+    return result
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="畢業學分檢核 Agent")
+    ap.add_argument("--paste", required=True, help="從成績查詢頁複製貼上的文字檔")
+    ap.add_argument("--ask", required=True, help="要問的問題")
+    ap.add_argument("--rules", default="rules/ba_114.json")
+    ap.add_argument("--programs", default="rules/programs_114.json")
+    ap.add_argument("--mock", action="store_true", help="不呼叫 AI，用離線模擬")
+    ap.add_argument("--show-report", action="store_true")
+    args = ap.parse_args()
+
+    with open(args.rules, encoding="utf-8") as f:
+        rules = json.load(f)
+    with open(args.programs, encoding="utf-8") as f:
+        programs = json.load(f)
+    programs.pop("open_questions", None)
+    with open(args.paste, encoding="utf-8") as f:
+        text = f.read()
+
+    if not agent_records_ok(text):
+        raise SystemExit("✗ 解析：沒有讀到任何課程，已停止（避免把 0 學分當成真的結果）。\n"
+                         "  請確認檔案內容是成績表格，或把檔案傳給開發者檢查格式。")
+    out = run(text, args.ask, rules, programs, args.mock)
+    print(f"[解析] {out['parsed_courses']} 門課；無法解析 {len(out['parse_problems'])} 段")
+    using_ai = not args.mock and all(os.getenv(k) for k in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"))
+    print(f"[路由] {out['route']}　[AI] {os.getenv('LLM_MODEL') if using_ai else '離線模擬'}\n")
+    print(out["answer"])
+    if out["audit_flags"]:
+        print(f"\n⚠ 稽核：回答中的數字 {out['audit_flags']} 不在檢核報告內，請人工確認")
+    else:
+        print("\n✓ 稽核：回答中的數字都能在檢核報告找到")
+    if args.show_report:
+        print(json.dumps(out["report"], ensure_ascii=False, indent=2))

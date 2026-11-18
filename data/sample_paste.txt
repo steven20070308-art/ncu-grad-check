@@ -1,0 +1,66 @@
+學期成績
+第114學年度第1學期 (114年9月至115年1月)
+課號	班別	課名	課程屬性	學制屬性	學分數	成績	T分數	備註
+CL0201	Z	國文（B）：中文寫作
+Chinese (B): Chinese writing	必修	學士班	2	75.00	51.50	-
+LN1005	I	大一英文:管理課群
+Freshman English as an Introduction to Management	必修	學士班	3	95.00	46.05	-
+MA1005	B	微積分
+Calculus	必修	學士班	3	69.00	46.36	-
+MT1011	A	經濟學
+Economics	必修	學士班	3	77.00	51.37	-
+MT1021	A	企業概論
+Introduction to Business	必修	學士班	3	85.00	57.40	EMI
+MT1031	A	會計學
+Accounting	必修	學士班	3	66.00	46.86	-
+MT1051	A	程式設計：Python
+An Introduction to Computing: Python	必修	學士班	3	67.00	48.35	-
+CC0424		社會參與之導航與探索
+SocialEngagement:AnIntroduction	通識	學士班	2	91.00	54.41	-
+PE1011	D	大一體育
+Freshman PE I	體育	學士班	0	82.00	59.22	-
+SC0003	U	服務學習課程
+Student Service-Learning	勞動服務	學士班	0	勞動服務通過	勞動服務通過	-
+操行成績：(範例資料已移除)
+第114學年度第2學期 (115年2月至115年6月)
+課號	班別	課名	課程屬性	學制屬性	學分數	成績	T分數	備註
+BA1003	A	管理學
+Management	必修	學士班	3	68.00	53.66	-
+CL0137		國文（A）經典閱讀：近現代散文選讀
+Chinese (A): The Classification Analysis of Modern Prose	必修	學士班	3	76.00	50.95	-
+LN1006	I	大一英文:管理課群
+Freshman English as an Introduction to Management	必修	學士班	3	83.00	59.64	-
+MA1006	A	微積分
+Calculus	必修	學士班	3	66.00	45.70	-
+MT1012	A	經濟學
+Economics	必修	學士班	3	94.00	57.88	-
+MT1032	A	會計學
+Accounting	必修	學士班	3	81.00	49.34	-
+GS3096		人工智慧與公共治理
+AI and Public Governance	通識	學士班	2	71.00	47.16	-
+GS4521		人工智慧與商業運用
+Artificial Intelligence and Commercial Applications	通識	學士班	2	66.00	46.77	-
+PE1022	D	大一體育
+Freshman PE II	體育	學士班	0	67.00	49.63	-
+SC0004	U	服務學習課程
+Student Service-Learning	勞動服務	學士班	0	勞動服務通過	勞動服務通過	-
+第115學年度第1學期 (115年9月至116年1月)
+課號	班別	課名	課程屬性	學制屬性	學分數	成績	T分數	備註
+BA2000	A	財務管理
+Financial Management	必修	學士班	3	未到		-
+BA2004	A	管理數學
+Managerial Mathematics	必修	學士班	3	未到		-
+BA2015	A	組織行為
+Organizational Behavior	必修	學士班	3	未到		-
+BA2030	A	行銷管理
+Marketing Management	必修	學士班	3	未到		-
+IM2046		作業系統
+Operating systems	必修	學士班	3	未到		-
+MT2041	A	統計學
+Statistics	必修	學士班	3	未到		-
+GS3073		AI人工智慧導論
+Introduction to Artificial Intelligence	通識	學士班	3	未到		同步遠距教學
+GS4504	A	設計思考與行動APP程式設計應用
+Design Thinking and Mobile Application Programming Design	通識	學士班	2	未到		-
+GS4519	B	機器學習概論
+Introduction to machine learning	通識	學士班	2	未到		-
