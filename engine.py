@@ -15,11 +15,11 @@ IN_PROGRESS = ("未到",)
 
 
 def passed(record, project=None):
-    """及格判定：數字成績 >= 60，或文字成績含「通過」。"""
+    """及格判定：數字成績 >= 60，或文字成績含「通過」但不含「不通過」（例：一般課程不通過）。"""
     project = PROJECT if project is None else project
     grade = str(record.get("grade", "")).strip()
     if "通過" in grade:
-        return True
+        return "不通過" not in grade
     if project and grade in IN_PROGRESS:
         return True
     try:

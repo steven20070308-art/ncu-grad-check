@@ -33,3 +33,9 @@ print("✓ 稽核：能抓出不在報告中的數字，課號與差值不誤判
 assert agent.find_course_codes("如果我修 ba5040 跟 BA7114") == ["BA5040", "BA7114"]
 assert agent.find_course_codes("我還差多少學分") == []
 print("✓ 路由：問題含課號時走試算")
+
+# 及格判定：「一般課程不通過」含「通過」兩字，不能算及格（學長成績單實際案例）
+import engine
+for g, want in [("一般課程不通過", False), ("勞動服務通過", True), ("通過", True), ("不通過", False), ("59", False), ("60", True), ("停修", False)]:
+    assert engine.passed({"grade": g}, False) is want, g
+print("✓ 及格判定：「一般課程不通過」不算取得學分")

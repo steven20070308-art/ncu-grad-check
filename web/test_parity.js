@@ -39,6 +39,7 @@ function randomTranscript(rules) {
   for (let i = 0; i < Math.floor(rand() * 6); i++)
     recs.push({ term: "t", code: `PE10${10 + i}`, name: "體育", attr: "體育", credits: 0, grade: "80" });
   recs.push({ term: "t", code: "SC0003", name: "服務學習課程", attr: "勞動服務", credits: 0, grade: "勞動服務通過" });
+  if (Math.random() < 0.3) recs.push({ term: "t", code: "MA2060", name: "機率論EMI補充課程", attr: "選修", credits: 1, grade: "一般課程不通過" });
   return recs;
 }
 

@@ -10,7 +10,7 @@
 
   function passed(r, project) {
     const g = String(r.grade ?? "").trim();
-    if (g.includes("通過")) return true;
+    if (g.includes("通過")) return !g.includes("不通過");  // 「一般課程不通過」也含「通過」兩字
     if (project && IN_PROGRESS.includes(g)) return true;
     const n = Number(g);
     return g !== "" && !Number.isNaN(n) && n >= PASS_SCORE;
