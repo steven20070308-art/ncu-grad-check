@@ -23,6 +23,7 @@ import argparse
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 
@@ -83,32 +84,53 @@ def agent_records_ok(text):
 
 
 # ---------- LLM 呼叫 ----------
+RETRY_CODES = {429, 500, 502, 503, 504}  # 暫時性錯誤：服務忙碌、超過頻率限制
+
+
+class AIUnavailable(Exception):
+    """AI 服務暫時無法使用（重試後仍失敗）。"""
+
+
 def llm_chat(messages, mock=False):
     base, key, model = (os.getenv("LLM_BASE_URL"), os.getenv("LLM_API_KEY"), os.getenv("LLM_MODEL"))
     if mock or not (base and key and model):
         return mock_llm(messages)
+    models = [model] + [m for m in [os.getenv("LLM_FALLBACK_MODEL")] if m]
+    last_error = ""
+    for m in models:
+        for attempt in range(3):  # 每個模型最多試 3 次，間隔 2、4 秒
+            try:
+                return _call(base, key, m, messages)
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", "ignore")[:300]
+                if e.code not in RETRY_CODES:
+                    raise SystemExit(f"✗ AI 服務回傳錯誤 {e.code}：{detail}\n"
+                                     "  401/403 多半是金鑰錯誤或權限不足；404 多半是網址或模型名稱打錯。")
+                last_error = f"{m} 回傳 {e.code}"
+                if attempt < 2:
+                    print(f"  …{last_error}，{2 ** (attempt + 1)} 秒後重試", flush=True)
+                    time.sleep(2 ** (attempt + 1))
+            except urllib.error.URLError as e:
+                raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+    raise AIUnavailable(last_error)
+
+
+def _call(base, key, model, messages):
     req = urllib.request.Request(
         base.rstrip("/") + "/chat/completions",
         data=json.dumps({"model": model, "messages": messages, "temperature": 0.2}).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    url = req.full_url
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read().decode("utf-8", "ignore")
-            status, final_url = resp.status, resp.geturl()
-            ctype = resp.headers.get("Content-Type", "")
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"✗ AI 服務回傳錯誤 {e.code}：{e.read().decode('utf-8', 'ignore')[:300]}\n"
-                         "  401/403 多半是金鑰錯誤或權限不足；404 多半是網址或模型名稱打錯。")
-    except urllib.error.URLError as e:
-        raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        body = resp.read().decode("utf-8", "ignore")
+        status, final_url = resp.status, resp.geturl()
+        ctype = resp.headers.get("Content-Type", "")
     try:
         return json.loads(body)["choices"][0]["message"]["content"]
     except (json.JSONDecodeError, KeyError, IndexError):
         # 回應不是預期的 JSON：把診斷資訊印出來（不含金鑰），方便判斷是網址錯還是服務異常
         raise SystemExit(
             "✗ AI 服務的回應格式不對，無法讀取回答。\n"
-            f"  呼叫網址：{url}\n  實際網址：{final_url}\n"
+            f"  呼叫網址：{req.full_url}\n  實際網址：{final_url}\n"
             f"  狀態碼：{status}　內容類型：{ctype or '(無)'}\n"
             f"  回應開頭：{body[:200] or '(空白)'}\n"
             "  若回應是網頁(HTML)或空白，多半是 .env 的 LLM_BASE_URL 打錯。")
@@ -117,8 +139,13 @@ def llm_chat(messages, mock=False):
 def mock_llm(messages):
     """離線模擬：直接從報告挑重點組成回答，用來測試流程與稽核。"""
     rep = json.loads(messages[-1]["content"].split("【檢核報告】", 1)[1])
+    return "（模擬回答）" + template_answer(rep)
+
+
+def template_answer(rep):
+    """不經 AI、直接由檢核報告組成的回答。AI 無法使用時的備援。"""
     t = rep["main"]["total"]
-    lines = [f"（模擬回答）你目前認列 {t['got']} 學分，畢業需要 {t['need']} 學分，還差 {t['need'] - t['got']} 學分。"]
+    lines = [f"你目前認列 {t['got']} 學分，畢業需要 {t['need']} 學分，還差 {t['need'] - t['got']} 學分。"]
     for b in rep["main"]["buckets"]:
         if b["got"] < b["need"]:
             lines.append(f"{b['id']}還差 {b['need'] - b['got']} 學分。")
@@ -225,7 +252,13 @@ def run(paste_text, question, rules, programs, mock=False):
         report = {"main": run_engine(records, rules, programs)}
         result["route"] = "解釋"
 
-    answer = explain(question, report, mock)
+    try:
+        answer = explain(question, report, mock)
+    except AIUnavailable as e:
+        # 降級：AI 忙碌時改用程式直接產生的結果，學生仍拿得到正確數字
+        answer = template_answer(report)
+        result["notice"] = f"AI 暫時無法使用（{e}），以下為程式直接產生的結果"
+        result["route"] += "（AI 降級）"
     suspicious = audit(answer, report, question)
     result.update({"answer": answer, "audit_flags": suspicious, "report": report})
     return result
@@ -256,6 +289,8 @@ if __name__ == "__main__":
     print(f"[解析] {out['parsed_courses']} 門課；無法解析 {len(out['parse_problems'])} 段")
     using_ai = not args.mock and all(os.getenv(k) for k in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"))
     print(f"[路由] {out['route']}　[AI] {os.getenv('LLM_MODEL') if using_ai else '離線模擬'}\n")
+    if out.get("notice"):
+        print(f"⚠ {out['notice']}")
     print(out["answer"])
     if out["audit_flags"]:
         print(f"\n⚠ 稽核：回答中的數字 {out['audit_flags']} 不在檢核報告內，請人工確認")
