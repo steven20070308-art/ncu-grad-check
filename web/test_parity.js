@@ -5,7 +5,7 @@ const { execFileSync } = require("child_process");
 const fs = require("fs");
 const G = require("./gradcheck.js");
 
-const DEPTS = ["ba_114", "ec_114", "fm_113", "im_114", "op_114"];
+const DEPTS = ["ba_114", "ec_114", "fm_113", "im_114", "op_114", "ph_114_a", "ph_114_b", "cm_114", "ma_114_cds", "ma_114_ms"];
 const programs = JSON.parse(fs.readFileSync("rules/programs_114.json", "utf8")).programs;
 const ALL = Object.keys(programs);
 

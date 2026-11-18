@@ -156,10 +156,14 @@ def check(rules, transcript, programs=None, project=None, selected=()):
             hits = [r for r in records if r["code"] not in used and r["credits"] > 0
                     and _has_prefix(r["code"], e["code_prefix"])
                     and not any(w in r["name"] for w in e.get("exclude_name_contains", []))
+                    and r["code"] not in e.get("exclude_codes", [])
                     and (r["code"] not in elect_used or (not e.get("exclusive") and e.get("include_choose")))]
         elif t == "program_set":
             s = _program_set(programs, e["programs"], False, e.get("exclude_prefix"))
             hits = [r for r in records if r["code"] not in used and r["code"] in s]
+        elif t == "outside":  # 外系課程：排除指定開頭的課號與指定屬性（通識、體育…）
+            hits = [r for r in records if r["code"] not in used and r["code"] not in elect_used and r["credits"] > 0
+                    and not _has_prefix(r["code"], e["exclude_prefix"]) and r["attr"] not in e.get("exclude_attr", [])]
         elif t == "elective_total":
             hits = [r for r in records if r["code"] not in used and r["credits"] > 0
                     and r["attr"] not in e.get("exclude_attr", [])]

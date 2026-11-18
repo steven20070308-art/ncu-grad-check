@@ -1,0 +1,312 @@
+{
+ "id": "ph_114_a",
+ "dept": "物理學系（甲類）",
+ "entry_year": 114,
+ "source": "物理學系（甲類） 114 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 83,
+ "required_courses": {
+  "系訂必修": [
+   {
+    "codes": [
+     "MA1001"
+    ],
+    "name": "微積分(上)",
+    "credits": 4,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1002"
+    ],
+    "name": "微積分(下)",
+    "credits": 4,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "PH1029"
+    ],
+    "name": "實驗物理與方法 I(上)",
+    "credits": 6,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "PH1030"
+    ],
+    "name": "實驗物理與方法 I(下)",
+    "credits": 6,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "PH1027"
+    ],
+    "name": "力學",
+    "credits": 4,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "PH1028"
+    ],
+    "name": "電磁學",
+    "credits": 4,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "PH2003"
+    ],
+    "name": "應用數學(上)",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "PH2004"
+    ],
+    "name": "應用數學(下)",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "PH3011"
+    ],
+    "name": "熱物理",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "PH3009"
+    ],
+    "name": "量子物理",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "PH2029"
+    ],
+    "name": "實驗物理與方法 II(上)",
+    "credits": 6,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "PH2030"
+    ],
+    "name": "實驗物理與方法 II(下)",
+    "credits": 6,
+    "term": "2下"
+   }
+  ]
+ },
+ "choose_groups": [
+  {
+   "id": "甲類：擇二科(6學分)",
+   "pick": 2,
+   "courses": [
+    {
+     "codes": [
+      "PH3057"
+     ],
+     "name": "計算物理導論",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH3036"
+     ],
+     "name": "近代物理實驗",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH3063"
+     ],
+     "name": "電子學(含實驗)I",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "PH3064"
+     ],
+     "name": "電子學(含實驗)II",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH3015"
+     ],
+     "name": "物理專題I",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "PH3016"
+     ],
+     "name": "物理專題II",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH4015"
+     ],
+     "name": "物理專題III",
+     "credits": 3,
+     "term": "4上"
+    },
+    {
+     "codes": [
+      "PH4016"
+     ],
+     "name": "物理專題IV",
+     "credits": 3,
+     "term": "4下"
+    },
+    {
+     "codes": [
+      "PH3021"
+     ],
+     "name": "業界實習I",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH3022"
+     ],
+     "name": "業界實習II",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "PH4021"
+     ],
+     "name": "業界實習III",
+     "credits": 3,
+     "term": "4下"
+    },
+    {
+     "codes": [
+      "PH4022"
+     ],
+     "name": "業界實習IV",
+     "credits": 3,
+     "term": "4下"
+    }
+   ]
+  }
+ ],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "可選「大一英文」科學課群 6 學分、英文系其他英文課 6 學分，或同一種第二外語 6 學分（課號不是 LN 開頭時本工具可能沒算到，請自行確認）；進修英文不列入畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "note": "含核心必修、選修；核心必修為人文與思想、應用科學、社會思潮與現象三大領域中至少一個領域（本工具未檢查領域）"
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "0 學分，兩學期"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "outside",
+   "id": "系訂必修：跨領域課程",
+   "min_credits": 6,
+   "exclusive": true,
+   "exclude_prefix": [
+    "PH",
+    "CL",
+    "LN",
+    "GS",
+    "CC",
+    "PE",
+    "SC"
+   ],
+   "exclude_attr": [
+    "通識",
+    "體育"
+   ],
+   "note": "須選修並通過外系課程 6 學分，不含通識中心、語言中心及體育室課程；課名或內容與物理系課程相近者不採認（本工具無法判斷，請自行確認）"
+  },
+  {
+   "type": "prefix",
+   "code_prefix": [
+    "PH"
+   ],
+   "exclusive": true,
+   "exclude_name_contains": [
+    "專題",
+    "論文研習",
+    "普通物理"
+   ],
+   "id": "本系選修(甲類)",
+   "min_credits": 15,
+   "note": "修業期限內至少選修並通過 PH 開頭選修 15 學分（專題類課程除外；外系用的普通物理不計）"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項",
+  "雙主修依本校「學生修讀雙主修辦法」辦理",
+  "物理系須在甲類、乙類擇一；本頁為甲類規則"
+ ],
+ "college": "理學院"
+}

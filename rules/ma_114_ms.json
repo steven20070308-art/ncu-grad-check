@@ -1,0 +1,330 @@
+{
+ "id": "ma_114_ms",
+ "dept": "數學系（數學科學組）",
+ "entry_year": 114,
+ "source": "數學系（數學科學組） 114 學年度入學應修科目表（學生提供 PDF）",
+ "min_total_credits": 128,
+ "required_total_check": 83,
+ "required_courses": {
+  "組訂必修": [
+   {
+    "codes": [
+     "MA1001"
+    ],
+    "name": "微積分(上)",
+    "credits": 4,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1002"
+    ],
+    "name": "微積分(下)",
+    "credits": 4,
+    "term": "1下"
+   },
+   {
+    "codes": [
+     "MA2007"
+    ],
+    "name": "線性代數I",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MA2008"
+    ],
+    "name": "線性代數II",
+    "credits": 3,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MA1015"
+    ],
+    "name": "基礎數學",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA1013"
+    ],
+    "name": "計算機概論I",
+    "credits": 3,
+    "term": "1上"
+   },
+   {
+    "codes": [
+     "MA2045"
+    ],
+    "name": "高等微積分 I",
+    "credits": 4,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MA2046"
+    ],
+    "name": "高等微積分 II",
+    "credits": 4,
+    "term": "2下"
+   },
+   {
+    "codes": [
+     "MA2025"
+    ],
+    "name": "代數 I",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MA2041"
+    ],
+    "name": "微分方程 I",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MA2021"
+    ],
+    "name": "機率論",
+    "credits": 3,
+    "term": "2上"
+   },
+   {
+    "codes": [
+     "MA3015"
+    ],
+    "name": "複變函數論 I",
+    "credits": 3,
+    "term": "3上"
+   }
+  ]
+ },
+ "choose_groups": [
+  {
+   "id": "組訂必修：普物B／普化／普生三科擇一(上下學期)",
+   "pick": 2,
+   "courses": [
+    {
+     "codes": [
+      "PH1033"
+     ],
+     "name": "普通物理B(上)",
+     "credits": 3,
+     "term": "1上"
+    },
+    {
+     "codes": [
+      "PH1034"
+     ],
+     "name": "普通物理B(下)",
+     "credits": 3,
+     "term": "1下"
+    },
+    {
+     "codes": [
+      "CM1009"
+     ],
+     "name": "普通化學 I",
+     "credits": 3,
+     "term": "1上"
+    },
+    {
+     "codes": [
+      "CM1010"
+     ],
+     "name": "普通化學 II",
+     "credits": 3,
+     "term": "1下"
+    },
+    {
+     "codes": [
+      "LS1013"
+     ],
+     "name": "普通生物學 I",
+     "credits": 3,
+     "term": "1上"
+    },
+    {
+     "codes": [
+      "LS1014"
+     ],
+     "name": "普通生物學 II",
+     "credits": 3,
+     "term": "1下"
+    }
+   ]
+  },
+  {
+   "id": "組訂核心選修(12學分，擇四科)",
+   "pick": 4,
+   "courses": [
+    {
+     "codes": [
+      "MA2026"
+     ],
+     "name": "代數 II",
+     "credits": 3,
+     "term": "2下"
+    },
+    {
+     "codes": [
+      "MA2042"
+     ],
+     "name": "微分方程 II",
+     "credits": 3,
+     "term": "2下"
+    },
+    {
+     "codes": [
+      "MA2051",
+      "MA5021"
+     ],
+     "name": "程式語言及其應用",
+     "credits": 3,
+     "term": "2下"
+    },
+    {
+     "codes": [
+      "MA3025"
+     ],
+     "name": "數理統計 I",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "MA2047"
+     ],
+     "name": "高等微積分 III",
+     "credits": 3,
+     "term": "2上"
+    },
+    {
+     "codes": [
+      "MA3034"
+     ],
+     "name": "離散數學 I",
+     "credits": 3,
+     "term": "3上"
+    },
+    {
+     "codes": [
+      "MA4005"
+     ],
+     "name": "幾何學 I",
+     "credits": 3,
+     "term": "4上"
+    },
+    {
+     "codes": [
+      "MA3036"
+     ],
+     "name": "近世代數",
+     "credits": 3,
+     "term": "3下"
+    },
+    {
+     "codes": [
+      "MA3003"
+     ],
+     "name": "拓樸學",
+     "credits": 3,
+     "term": "3下"
+    }
+   ]
+  }
+ ],
+ "credit_buckets": [
+  {
+   "id": "國文",
+   "min_credits": 5,
+   "match": {
+    "code_prefix": [
+     "CL"
+    ]
+   }
+  },
+  {
+   "id": "外文",
+   "min_credits": 6,
+   "match": {
+    "code_prefix": [
+     "LN"
+    ]
+   },
+   "exclude_name_contains": [
+    "進修英文"
+   ],
+   "note": "可選「大一英文」科學課群 6 學分、英文系其他英文課 6 學分，或同一種第二外語 6 學分（課號不是 LN 開頭時本工具可能沒算到，請自行確認）；進修英文不列入畢業學分"
+  },
+  {
+   "id": "通識",
+   "min_credits": 14,
+   "match": {
+    "attr": [
+     "通識"
+    ]
+   },
+   "note": "含核心必修、選修；核心必修四大領域中至少一個領域；通識最多認定 24 學分（本工具未檢查領域）",
+   "overflow_max": 10
+  }
+ ],
+ "count_requirements": [
+  {
+   "id": "體育",
+   "min_count": 5,
+   "match": {
+    "attr": [
+     "體育"
+    ]
+   },
+   "note": "大一上下、大二上下、大三上各一學期，0學分"
+  },
+  {
+   "id": "服務學習",
+   "min_count": 2,
+   "match": {
+    "code_prefix": [
+     "SC"
+    ]
+   },
+   "note": "0 學分，兩學期"
+  }
+ ],
+ "elective_rules": [
+  {
+   "type": "prefix",
+   "id": "數學系所選修",
+   "code_prefix": [
+    "MA"
+   ],
+   "min_credits": 12,
+   "exclusive": true,
+   "exclude_codes": [
+    "MA1003",
+    "MA1004",
+    "MA1005",
+    "MA1006",
+    "MA1009",
+    "MA1112"
+   ],
+   "note": "另修數學系所 12 學分課程（數學系替其他系開的微積分、微積分先修不計）"
+  }
+ ],
+ "total_caps": [],
+ "warnings": [
+  "共同科目及其他畢業條件請見學校應修科目表注意事項",
+  "雙主修依本校「學生修讀雙主修辦法」辦理",
+  "三科擇一須修同一科的上下學期（例 PH1033＋PH1034），本工具只檢查修兩門，請自行確認",
+  "「計算機概論I」需於本系修習，不得以外系計算機概論抵修",
+  "「程式語言及其應用」數學系所開的 MA5021 也可修，及格後辦理抵免",
+  "高等微積分、複變、程式語言、數理統計有先修成績門檻，請見應修科目表備註"
+ ],
+ "college": "理學院"
+}

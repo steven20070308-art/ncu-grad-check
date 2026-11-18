@@ -197,10 +197,14 @@
       } else if (e.type === "prefix") {
         hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && hasPrefix(r.code, e.code_prefix)
           && !(e.exclude_name_contains || []).some((w) => r.name.includes(w))
+          && !(e.exclude_codes || []).includes(r.code)
           && (!electUsed.has(r.code) || (!e.exclusive && e.include_choose)));
       } else if (e.type === "program_set") {
         const set = programSet(e.programs, false, e.exclude_prefix);
         hits = records.filter((r) => !used.has(r.code) && set.has(r.code));
+      } else if (e.type === "outside") {
+        hits = records.filter((r) => !used.has(r.code) && !electUsed.has(r.code) && r.credits > 0
+          && !hasPrefix(r.code, e.exclude_prefix) && !(e.exclude_attr || []).includes(r.attr));
       } else if (e.type === "elective_total") {
         hits = records.filter((r) => !used.has(r.code) && r.credits > 0 && !(e.exclude_attr || []).includes(r.attr));
       }
@@ -381,12 +385,16 @@
     Object.values(programs).forEach((p) => p.groups.forEach((g) => Object.keys(g.courses).forEach((k) => {
       programAll.add(k); if (g.id !== "選修") programCore.add(k);
     })));
-    // 大學部可修：課號千位數 1-5，或 7 開頭但列在學程課表內（碩博同修）
+    // 大學部可修：課號千位數 1-5，或 7 開頭但列在「有勾選的學程」或本系規則引用的學程課表內（碩博同修）
+    const relevant = new Set(selected.concat((rules.elective_rules || []).flatMap((e) => e.programs || [])));
+    const programMine = new Set();
+    Object.entries(programs).filter(([k]) => relevant.has(k))
+      .forEach(([, p]) => p.groups.forEach((g) => Object.keys(g.courses).forEach((c) => programMine.add(c))));
     const year = opts.year ?? 4;  // 下學期是大幾：只排建議學期不晚於這一年的必修
     const known = new Set(Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
       .flatMap((c) => c.codes));
     const open = offerings.filter((o) => !o.canceled && o.credits > 0 && !taken.has(o.code)
-      && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programAll.has(o.code)))
+      && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programMine.has(o.code)))
       // 5 字頭但標「必修」又不在本系規則裡的，多半是碩士班必修（例：EC5006 口語表達），不推薦
       && !(levelOf(o.code) >= 5 && o.type === "必修" && !known.has(o.code) && !programAll.has(o.code)));
     const reasons = [];
@@ -408,8 +416,10 @@
       let ok = () => false;
       if (e.type === "program_core") ok = (o) => programCore.has(o.code);
       else if (e.type === "prefix") ok = (o) => hasPrefix(o.code, e.code_prefix) && !todoCodes.has(o.code)
-        && !(e.exclude_name_contains || []).some((w) => (o.name || "").includes(w));
+        && !(e.exclude_name_contains || []).some((w) => (o.name || "").includes(w))
+        && !(e.exclude_codes || []).includes(o.code);
       else if (e.type === "program_set") ok = (o) => programAll.has(o.code) && !hasPrefix(o.code, e.exclude_prefix);
+      else if (e.type === "outside") ok = (o) => !hasPrefix(o.code, e.exclude_prefix) && o.type === "選修";
       else if (e.type === "elective_total") ok = (o) => o.type === "選修";
       const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";
       openNow.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
