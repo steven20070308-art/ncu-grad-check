@@ -168,6 +168,7 @@ footer a { color: var(--accent); }
         <div class="big"><span class="num" id="remain">–</span><span class="unit" id="remain-unit">學分才能畢業</span></div>
         <div class="stack" id="stack" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <div id="unmet"></div>
       </section>
 
       <div class="grid2">
@@ -291,15 +292,28 @@ function reqRow(name, got, need, unit, note) {
 function render() {
   const { rep, dept } = state;
   const t = rep.total;
-  const remain = Math.max(0, t.need - t.got);
-  $("remain").textContent = remain ? `還差 ${remain}` : "已達";
-  $("remain-unit").textContent = remain ? `學分（畢業需 ${t.need}）` : `畢業總學分 ${t.need}`;
+  const gs = rep.graduation;
+  const remain = gs.total_gap;
+  // 畢業 = 總學分夠「而且」每一項都完成；總學分到了但必修沒修完，不能顯示已達
+  if (gs.graduated) {
+    $("remain").textContent = "已達畢業條件";
+    $("remain-unit").textContent = `總學分 ${t.got} / ${t.need}，各項規定都完成`;
+  } else if (remain === 0) {
+    $("remain").textContent = "還不能畢業";
+    $("remain-unit").textContent = `總學分已達 ${t.need}，但還有 ${gs.unmet.length} 項沒完成，至少還要修 ${gs.min_more} 學分`;
+  } else {
+    $("remain").textContent = `還差 ${gs.min_more}`;
+    $("remain-unit").textContent = gs.min_more > remain ? `學分（總學分還差 ${remain}，但必修缺口更大）` : `學分（畢業需 ${t.need}）`;
+  }
+  $("unmet").innerHTML = gs.unmet.length
+    ? `<div class="chips">${gs.unmet.map((u) => `<span class="chip" style="border-color:var(--bad)">${esc(u.id)} 還差 ${u.gap} ${u.unit}</span>`).join("")}</div>`
+    : "";
   const w = (n) => `${Math.min(100, (n / t.need) * 100)}%`;
   $("stack").innerHTML = `<span class="s-earned" style="width:${w(rep.earned)}"></span><span class="s-ongoing" style="width:${w(rep.ongoing)}"></span>`;
   $("legend").innerHTML =
     `<span><i class="dot s-earned"></i>已取得 <b>${rep.earned}</b></span>` +
     (rep.ongoing ? `<span><i class="dot s-ongoing"></i>修課中（預計）<b>${rep.ongoing}</b></span>` : "") +
-    `<span><i class="dot" style="background:var(--line)"></i>尚缺 <b>${remain}</b></span>`;
+    `<span><i class="dot" style="background:var(--line)"></i>總學分尚缺 <b>${remain}</b></span>`;
 
   let rows = "";
   for (const [g, v] of Object.entries(rep.required)) rows += reqRow(g, v.done_credits, v.need_credits, " 學分");

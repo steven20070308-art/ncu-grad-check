@@ -53,6 +53,7 @@ function shape(rep) {
     electives: rep.electives.map((e) => [e.id, e.got_courses, e.got_credits, e.done, e.courses]),
     caps: rep.caps.map((c) => [c.id, c.got, c.counted]),
     free: rep.free_elective_credits,
+    grad: [rep.graduation.graduated, rep.graduation.min_more, rep.graduation.unmet.map((u) => u.id + u.gap)],
     failed: rep.failed.map((r) => r.code),
     programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.groups.map((g) => g.got)]])),
   };
@@ -79,6 +80,7 @@ def shape(rep):
       'electives': [[e['id'], e['got_courses'], e['got_credits'], e['done'], e['courses']] for e in rep['electives']],
       'caps': [[c['id'], c['got'], c['counted']] for c in rep['caps']],
       'free': rep['free_elective_credits'],
+      'grad': [rep['graduation']['graduated'], rep['graduation']['min_more'], [u['id'] + str(u['gap']) for u in rep['graduation']['unmet']]],
       'failed': [r['code'] for r in rep['failed']],
       'programs': {k: [v['credits'], v['done'], [g['got'] for g in v['groups']]] for k, v in rep['programs'].items()},
     }

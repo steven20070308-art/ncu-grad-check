@@ -214,13 +214,39 @@
     rep.failed = transcript.filter((r) => !passed(r, project) && !IN_PROGRESS.includes(String(r.grade).trim()));
     rep.programs = Object.fromEntries(Object.entries(programs).map(([k, p]) => [k, checkProgram(p, transcript, project)]));
     rep.notes = rules.warnings;
+    rep.graduation = graduationStatus(rep);
     return rep;
+  }
+
+  /* 畢業判定：總學分夠「而且」每一項規定都完成，才算達到畢業條件。
+   * min_more 是「至少還要再修幾學分」：總學分缺口與必修缺口取大者
+   * （總學分已超過 128，但必修還沒修，仍然要再修那些必修的學分）。 */
+  function graduationStatus(rep) {
+    const unmet = [];
+    for (const [g, v] of Object.entries(rep.required))
+      if (v.done_credits < v.need_credits) unmet.push({ id: g, gap: v.need_credits - v.done_credits, unit: "學分" });
+    rep.choose.forEach((g) => { if (g.got < g.pick) unmet.push({ id: g.id, gap: g.pick - g.got, unit: "門" }); });
+    rep.buckets.forEach((b) => { if (b.got < b.need) unmet.push({ id: b.id, gap: b.need - b.got, unit: "學分" }); });
+    rep.counts.forEach((c) => { if (c.got < c.need) unmet.push({ id: c.id, gap: c.need - c.got, unit: "次" }); });
+    rep.electives.forEach((e) => {
+      if (e.done) return;
+      if (e.need_courses && e.got_courses < e.need_courses) unmet.push({ id: e.id, gap: e.need_courses - e.got_courses, unit: "門" });
+      else unmet.push({ id: e.id, gap: e.need_credits - e.got_credits, unit: "學分" });
+    });
+    const totalGap = Math.max(0, rep.total.need - rep.total.got);
+    const requiredGap = Object.values(rep.required).reduce((s, v) => s + v.need_credits - v.done_credits, 0)
+      + rep.choose.reduce((s, g) => s + 3 * Math.max(0, g.pick - g.got), 0);
+    return { graduated: totalGap === 0 && unmet.length === 0, total_gap: totalGap,
+             min_more: Math.max(totalGap, requiredGap), unmet };
   }
 
   // AI 只拿到摘要，不拿原始成績
   function slimReport(rep) {
     return {
       total: rep.total,
+      graduation: { "已達畢業條件": rep.graduation.graduated, "至少還要修": rep.graduation.min_more,
+                    "未完成項目": rep.graduation.unmet.map((u) => `${u.id}還差${u.gap}${u.unit}`),
+                    "說明": "總學分夠且每一項都完成才算達到畢業條件" },
       credit_status: { "已取得": rep.earned, "修課中或試算(預計)": rep.ongoing,
                        "說明": "total.got 已包含修課中與試算的預計學分，尚未真正取得" },
       required: Object.fromEntries(Object.entries(rep.required).map(([g, v]) => [g, {
@@ -265,8 +291,9 @@
 2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
 3. 用繁體中文、口語、條列，先講結論再講細節，200 字以內。
 4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。
-5. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
-6. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。`;
+5. 能不能畢業以 graduation 為準：總學分到了但還有未完成項目，就是還不能畢業，要列出未完成項目。
+6. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
+7. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。`;
 
   // ---------- 開課資料：課程查詢頁複製的文字 ----------
   const DAYS = "一二三四五六日";

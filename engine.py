@@ -182,13 +182,49 @@ def check(rules, transcript, programs=None, project=None):
                      and str(r.get("grade", "")).strip() not in IN_PROGRESS]
     rep["programs"] = {k: check_program(p, transcript, project) for k, p in programs.items()}
     rep["notes"] = rules["warnings"]
+    rep["graduation"] = graduation_status(rep)
     return rep
+
+
+def graduation_status(rep):
+    """畢業判定：總學分夠「而且」每一項規定都完成才算達到畢業條件（與網頁版 graduationStatus 相同）。"""
+    unmet = []
+    for g, v in rep["required"].items():
+        if v["done_credits"] < v["need_credits"]:
+            unmet.append({"id": g, "gap": v["need_credits"] - v["done_credits"], "unit": "學分"})
+    for g in rep["choose"]:
+        if g["got"] < g["pick"]:
+            unmet.append({"id": g["id"], "gap": g["pick"] - g["got"], "unit": "門"})
+    for b in rep["buckets"]:
+        if b["got"] < b["need"]:
+            unmet.append({"id": b["id"], "gap": b["need"] - b["got"], "unit": "學分"})
+    for c in rep["counts"]:
+        if c["got"] < c["need"]:
+            unmet.append({"id": c["id"], "gap": c["need"] - c["got"], "unit": "次"})
+    for e in rep["electives"]:
+        if e["done"]:
+            continue
+        if e["need_courses"] and e["got_courses"] < e["need_courses"]:
+            unmet.append({"id": e["id"], "gap": e["need_courses"] - e["got_courses"], "unit": "門"})
+        else:
+            unmet.append({"id": e["id"], "gap": e["need_credits"] - e["got_credits"], "unit": "學分"})
+    total_gap = max(0, rep["total"]["need"] - rep["total"]["got"])
+    required_gap = (sum(v["need_credits"] - v["done_credits"] for v in rep["required"].values())
+                    + sum(3 * max(0, g["pick"] - g["got"]) for g in rep["choose"]))
+    return {"graduated": total_gap == 0 and not unmet, "total_gap": total_gap,
+            "min_more": max(total_gap, required_gap), "unmet": unmet}
 
 
 def print_report(rules, rep):
     print(f"=== {rules['dept']} {rules['entry_year']} 學年度入學 畢業學分檢核 ===\n")
     t = rep["total"]
-    print(f"總學分：{t['got']} / {t['need']}（還差 {max(0, t['need'] - t['got'])}；已取得 {rep['earned']}、修課中 {rep['ongoing']}）\n")
+    print(f"總學分：{t['got']} / {t['need']}（已取得 {rep['earned']}、修課中 {rep['ongoing']}）")
+    gs = rep["graduation"]
+    if gs["graduated"]:
+        print("✓ 已達畢業條件\n")
+    else:
+        items = "、".join(f"{u['id']}還差{u['gap']}{u['unit']}" for u in gs["unmet"])
+        print(f"✗ 尚未達畢業條件：至少還要修 {gs['min_more']} 學分" + (f"；未完成：{items}" if items else "") + "\n")
     for group, g in rep["required"].items():
         print(f"【{group}】{g['done_credits']} / {g['need_credits']}")
         for c in g["todo"]:

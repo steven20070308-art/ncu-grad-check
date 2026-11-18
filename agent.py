@@ -178,6 +178,9 @@ def run_engine(records, rules, programs, project=True):
     # 只留 AI 需要的欄位，降低 token 用量
     return {
         "total": main["total"],
+        "graduation": {"已達畢業條件": main["graduation"]["graduated"], "至少還要修": main["graduation"]["min_more"],
+                       "未完成項目": [f"{u['id']}還差{u['gap']}{u['unit']}" for u in main["graduation"]["unmet"]],
+                       "說明": "總學分夠且每一項都完成才算達到畢業條件"},
         "credit_status": {"已取得": main["earned"], "修課中或試算(預計)": main["ongoing"],
                           "說明": "total.got 已包含修課中與試算的預計學分，尚未真正取得"},
         "required": {g: {"done": v["done_credits"], "need": v["need_credits"],
@@ -224,8 +227,9 @@ SYSTEM_PROMPT = """你是中央大學的畢業學分顧問。
 2. 報告標示「待確認」「note」的地方，要提醒學生向系辦確認，不可替系辦下結論。
 3. 用繁體中文、口語、條列，先講結論再講細節，200 字以內。
 4. 若有 before（試算前）與 main（試算後），要說明修這些課之後改變了什麼。
-5. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
-6. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。"""
+5. 能不能畢業以 graduation 為準：總學分到了但還有未完成項目，就是還不能畢業，要列出未完成項目。
+6. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
+7. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。"""
 
 
 def explain(question, report, mock=False):
