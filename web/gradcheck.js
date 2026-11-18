@@ -31,7 +31,7 @@
     const marks = [];
     let t;
     while ((t = termRe.exec(text))) marks.push([t.index, `${t[1]}-${t[2]}`]);
-    const codeRe = /^([A-Z]{2,3}\d{4})\b/gm;
+    const codeRe = /^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))\b/gm;
     const hits = [];
     let c;
     while ((c = codeRe.exec(text))) hits.push([c.index, c[1]]);
@@ -63,7 +63,7 @@
   function parseManual(text, catalog) {
     const records = [], problems = [], guessed = [];
     text.split(/\n/).forEach((line) => {
-      const m = line.trim().toUpperCase().match(/^([A-Z]{2,3}\d{4})\s*(\S+)?/);
+      const m = line.trim().toUpperCase().match(/^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))\s*(\S+)?/);
       if (!line.trim()) return;
       if (!m) { problems.push(line.trim().slice(0, 80)); return; }
       const code = m[1];
@@ -255,7 +255,7 @@
     numbersIn(question, allowed);
     const base = [...allowed];
     for (const a of base) for (const b of base) if (a - b >= 0 && a - b <= 200) allowed.add(a - b);
-    const found = (answer.replace(/[A-Z]{2,3}\d{4}/g, "").match(/\d+/g) || []).map((n) => parseInt(n, 10));
+    const found = (answer.replace(/(?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4})/g, "").match(/\d+/g) || []).map((n) => parseInt(n, 10));
     return [...new Set(found.filter((n) => !allowed.has(n)))].sort((a, b) => a - b);
   }
 
@@ -279,7 +279,7 @@
     const out = [];
     starts.forEach((st, k) => {
       const chunk = lines.slice(st + 1, k + 1 < starts.length ? starts[k + 1] : lines.length);
-      const head = (chunk[0] || "").match(/^([A-Z]{2,3}\d{4})-(\S+)\t(.+)$/);
+      const head = (chunk[0] || "").match(/^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))-(\S+)\t(.+)$/);
       if (!head) return;
       const ci = chunk.findIndex((l) => /^\d+\t\S/.test(l));
       const ti = chunk.findIndex((l) => /^(必修|選修|[^\t]+)\t(全|半)\t/.test(l));
@@ -297,7 +297,7 @@
         credits: parseInt(credits, 10), slots, place: place.trim(),
         type: ti >= 0 ? chunk[ti].split("\t")[0] : "",
         teachers: chunk.slice(1, ci).flatMap((l) => l.split("\t")).map((x) => x.trim())
-          .filter((x) => x && !x.startsWith("[") && !/[A-Za-z]{3,}|[，。、:：]|^與|^加退選|^不在|^本課程|^請|^選課前|^實際/.test(x)),
+          .filter((x) => /^[\u3400-\u9fff]{2,4}$/.test(x) && !/上課|授課|停開|選課|合班/.test(x)),  // 教師姓名：2-4 個中文字
         gradOnly: false,
         noFirstRound: tagLine.includes("不開放初選"),
         english: tagLine.includes("授課語言:英語"),
@@ -308,7 +308,9 @@
   }
 
   const conflicts = (a, b) => a.slots.some((x) => b.slots.includes(x));
-  const levelOf = (code) => parseInt(code.replace(/\D/g, "")[0], 10);
+  // 課號千位數代表年級層級（1-4 大學部、5 大學部/碩士、6 以上研究所）；
+  // 第三碼是英文字母的課號（例：IMA022 碩專班）視為研究所課程
+  const levelOf = (code) => (/^[A-Z]{3}/.test(code) ? 9 : parseInt(code.slice(2, 3), 10));
 
   /* 下學期排課建議：依優先序挑課，避開衝堂與已修/修課中的課，不超過學分上限。
    * 優先序：還沒修的必修 → 擇N 尚缺 → 選修規則尚缺（學程必選、本系選修、數位素養）。 */

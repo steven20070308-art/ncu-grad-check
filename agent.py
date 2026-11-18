@@ -47,7 +47,7 @@ def load_env(path=".env"):
 load_env()
 
 ATTRS = ("必修", "選修", "通識", "體育", "勞動服務", "軍訓")
-CODE_RE = re.compile(r"^([A-Z]{2,3}\d{4})\b", re.M)
+CODE_RE = re.compile(r"^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))\b", re.M)
 TERM_RE = re.compile(r"第\s*(\d+)\s*學年度第\s*(\d)\s*學期")
 
 
@@ -199,7 +199,7 @@ def run_engine(records, rules, programs, project=True):
 
 
 def find_course_codes(question):
-    return re.findall(r"\b([A-Z]{2,3}\d{4})\b", question.upper())
+    return re.findall(r"\b((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))\b", question.upper())
 
 
 def planned_records(codes, programs):
@@ -257,7 +257,7 @@ def audit(answer, report, question):
     """
     allowed = numbers_in(report) | numbers_in(question)
     allowed |= {a - b for a in allowed for b in allowed if 0 <= a - b <= 200}
-    in_answer = {int(n) for n in re.findall(r"\d+", re.sub(r"[A-Z]{2,3}\d{4}", "", answer))}
+    in_answer = {int(n) for n in re.findall(r"\d+", re.sub(r"(?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4})", "", answer))}
     return sorted(in_answer - allowed)
 
 

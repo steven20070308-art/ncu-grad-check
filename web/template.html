@@ -368,7 +368,7 @@ function run() {
 
 function simulate() {
   if (!state.rep) return;
-  const codes = [...new Set(($("sim-codes").value.toUpperCase().match(/[A-Z]{2,3}\d{4}/g) || []))];
+  const codes = [...new Set(($("sim-codes").value.toUpperCase().match(/(?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4})/g) || []))];
   if (!codes.length) { $("sim-out").innerHTML = `<p class="notice warn">請輸入課號，例如 BA5040。</p>`; return; }
   const plan = codes.map((code) => ({ term: "試算", code, name: state.dept.catalog[code]?.name || code,
     attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
