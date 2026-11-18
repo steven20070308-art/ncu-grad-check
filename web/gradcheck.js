@@ -281,10 +281,16 @@
       const chunk = lines.slice(st + 1, k + 1 < starts.length ? starts[k + 1] : lines.length);
       const head = (chunk[0] || "").match(/^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))-(\S+)\t(.+)$/);
       if (!head) return;
-      const ci = chunk.findIndex((l) => /^\d+\t\S/.test(l));
-      const ti = chunk.findIndex((l) => /^(必修|選修|[^\t]+)\t(全|半)\t/.test(l));
+      // 學分那一行以「數字+Tab」開頭；上課時間可能跨好幾行，直到「必修/選修 + 全/半」那一行為止。
+      // 暑期密集課沒有上課時間，學分與選修別會擠在同一行（例：3\t\t必修\t半）。
+      const ci = chunk.findIndex((l) => /^\d+\t/.test(l));
       if (ci < 0) return;
-      const [credits, place] = chunk[ci].split("\t");
+      let ti = chunk.findIndex((l, i) => i >= ci && /(?:^|\t)(必修|選修)\t(全|半)\t/.test(l));
+      if (ti < 0) ti = chunk.length - 1;
+      const block = chunk.slice(ci, ti + 1).join("\n");
+      const credits = block.match(/^(\d+)\t/)[1];
+      const typeM = block.match(/(?:^|\t|\n)(必修|選修)\t(全|半)\t/);
+      const place = block.replace(/^\d+\t/, "").replace(/(?:^|\t|\n)(必修|選修)\t(全|半)\t[\s\S]*$/, "").replace(/\n/g, " ").trim();
       const slots = [];
       const re = /([一二三四五六日])([0-9ZABC]+)\//g;
       let m;
@@ -294,8 +300,8 @@
         serial: lines[st].trim(), code: head[1], section: head[2],
         name: head[3].replace(/\s*\[已停開\]\s*/, "").trim(),
         canceled: head[3].includes("已停開"),
-        credits: parseInt(credits, 10), slots, place: place.trim(),
-        type: ti >= 0 ? chunk[ti].split("\t")[0] : "",
+        credits: parseInt(credits, 10), slots, place: place || "時間未定（密集或暑期課程）",
+        type: typeM ? typeM[1] : "",
         teachers: chunk.slice(1, ci).flatMap((l) => l.split("\t")).map((x) => x.trim())
           .filter((x) => /^[\u3400-\u9fff]{2,4}$/.test(x) && !/上課|授課|停開|選課|合班/.test(x)),  // 教師姓名：2-4 個中文字
         gradOnly: false,
@@ -323,15 +329,26 @@
       programAll.add(k); if (g.id !== "選修") programCore.add(k);
     })));
     // 大學部可修：課號千位數 1-5，或 7 開頭但列在學程課表內（碩博同修）
+    const year = opts.year ?? 4;  // 下學期是大幾：只排建議學期不晚於這一年的必修
+    const known = new Set(Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
+      .flatMap((c) => c.codes));
     const open = offerings.filter((o) => !o.canceled && o.credits > 0 && !taken.has(o.code)
-      && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programAll.has(o.code))));
+      && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programAll.has(o.code)))
+      // 5 字頭但標「必修」又不在本系規則裡的，多半是碩士班必修（例：EC5006 口語表達），不推薦
+      && !(levelOf(o.code) >= 5 && o.type === "必修" && !known.has(o.code) && !programAll.has(o.code)));
     const reasons = [];
-    const todoCodes = new Set(Object.values(rep.required).flatMap((v) => v.todo.flatMap((c) => c.codes)));
-    open.filter((o) => todoCodes.has(o.code)).forEach((o) => reasons.push([1, o, "必修，尚未修"]));
+    const allTodo = Object.values(rep.required).flatMap((v) => v.todo);
+    const todoCodes = new Set(allTodo.flatMap((c) => c.codes));
+    const tooEarly = new Set(allTodo.filter((c) => parseInt(c.term, 10) > year).flatMap((c) => c.codes));
+    open.filter((o) => todoCodes.has(o.code) && !tooEarly.has(o.code)).forEach((o) => reasons.push([1, o, "必修，尚未修"]));
     rep.choose.filter((g) => g.got < g.pick).forEach((g) => {
-      const codes = new Set(g.options.flatMap((c) => c.codes));
+      g.options.filter((c) => parseInt(c.term, 10) > year).forEach((c) => c.codes.forEach((x) => tooEarly.add(x)));
+      const codes = new Set(g.options.filter((c) => !(parseInt(c.term, 10) > year)).flatMap((c) => c.codes));
       open.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([2, o, `${g.id}，還差 ${g.pick - g.got} 門`]));
     });
+    // 高年級才建議修的必修/擇N課，也不拿來充當選修
+    const laterCodes = [...new Set(open.filter((o) => tooEarly.has(o.code)).map((o) => o.code))];
+    const openNow = open.filter((o) => !tooEarly.has(o.code));
     (rules.elective_rules || []).forEach((e, i) => {
       const r = rep.electives[i];
       if (r.done) return;
@@ -341,7 +358,7 @@
       else if (e.type === "program_set") ok = (o) => programAll.has(o.code) && !hasPrefix(o.code, e.exclude_prefix);
       else if (e.type === "elective_total") ok = (o) => o.type === "選修";
       const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";
-      open.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
+      openNow.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
     });
     // 同一門課只留優先序最高的理由；學程課優先於一般選修
     const best = new Map();
@@ -380,10 +397,16 @@
       current = next;
     }
     const after = check(rules, transcript.concat(chosen.map(asRecord)), programs, true);
-    return { chosen, credits, candidates, before: rep, after, maxCredits };
+    return { chosen, credits, candidates, before: rep, after, maxCredits, year, later: laterCodes };
   }
 
-  const api = { parseOfferings, planNextTerm, DAYS, PERIODS, passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
+  // 依成績單上有幾個學期，推估下學期是大幾（每學年兩學期）
+  function guessNextYear(transcript) {
+    const terms = new Set(transcript.map((r) => r.term).filter((t) => /^\d+-[12]$/.test(t)));
+    return Math.min(4, Math.max(1, Math.ceil((terms.size + 1) / 2)));
+  }
+
+  const api = { guessNextYear, parseOfferings, planNextTerm, DAYS, PERIODS, passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
                 slimReport, audit, SYSTEM_PROMPT, IN_PROGRESS };
   if (typeof module !== "undefined") module.exports = api;
   else root.GradCheck = api;

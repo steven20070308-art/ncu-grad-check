@@ -98,7 +98,7 @@ python agent.py --paste data/sample_paste.txt --ask "我想修 ERP 學程要注�
 | `web/gradcheck.js` | 網頁版核心邏輯（解析、規則引擎、稽核），與 Python 版一致 |
 | `web/template.html` | 網頁介面 |
 | `web/build.py` | 把邏輯、規則與範例內嵌成單一檔案 `docs/index.html` |
-| `data/offerings_*.txt` | 從課程查詢系統複製的開課資料（目前為 115-1 企管系第 1 頁，示範用） |
+| `data/offerings_*.txt` | 從課程查詢系統複製的開課資料（115-1 企管、資管、財金、經濟系共 190 個班，示範用） |
 | `web/test_parity.js` | 網頁版與 Python 版結果比對測試 |
 
 ## 目前限制與待確認

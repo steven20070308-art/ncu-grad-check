@@ -191,6 +191,8 @@ footer a { color: var(--accent); }
         <h2 id="plan-title">排課建議</h2>
         <p class="hint" id="plan-src"></p>
         <div class="row">
+          <label for="plan-year" style="display:flex;gap:6px;align-items:center">下學期是
+            <select id="plan-year" style="width:auto"><option value="1">大一</option><option value="2">大二</option><option value="3">大三</option><option value="4">大四</option></select></label>
           <label for="plan-max" style="display:flex;gap:6px;align-items:center">學分上限
             <select id="plan-max" style="width:auto"></select></label>
           <button id="plan-run" type="button">產生排課建議</button>
@@ -360,6 +362,7 @@ function run() {
   msg.className = parsed.problems.length || parsed.guessed.length ? "notice warn" : "notice";
   msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
   render();
+  $("plan-year").value = String(G.guessNextYear(state.records));
   if (OFFERINGS.length) plan();
   $("sim-out").innerHTML = "";
   $("ai-answer").textContent = "";
@@ -414,14 +417,17 @@ function timetable(chosen) {
 
 function plan() {
   if (!state.records.length) return;
-  const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS, { maxCredits: +$("plan-max").value });
+  const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS,
+    { maxCredits: +$("plan-max").value, year: +$("plan-year").value });
   if (!r.chosen.length) {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
     return;
   }
   const skipped = r.candidates.filter((c) => c.skipped);
   $("plan-out").innerHTML = `<div>${timetable(r.chosen)}
-      <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p></div>
+      <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p>
+      ${r.credits < r.maxCredits ? `<p class="hint">還有 ${r.maxCredits - r.credits} 學分空間：目前的必修與選修缺口都排進去了，剩下可以自由選修有興趣的課。</p>` : ""}
+      ${r.later.length ? `<p class="hint">這學期也有開 ${r.later.map(esc).join("、")}，但應修科目表建議高年級再修，所以先不排。</p>` : ""}</div>
     <div><ul class="plan">${r.chosen.map((c) => `<li><span><b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
       <span class="mono">${c.credits} 學分</span>
       <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span></li>`).join("")}</ul>
@@ -474,6 +480,8 @@ $("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); 
 $("sim-run").addEventListener("click", simulate);
 $("plan-max").innerHTML = [12, 15, 18, 21, 24, 25].map((n) => `<option${n === 21 ? " selected" : ""}>${n}</option>`).join("");
 $("plan-run").addEventListener("click", plan);
+$("plan-year").addEventListener("change", plan);
+$("plan-max").addEventListener("change", plan);
 $("off-add").addEventListener("click", () => {
   const before = OFFERINGS.length;
   loadOfferings([$("off-paste").value], "內建資料＋你加入的資料");
