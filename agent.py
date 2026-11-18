@@ -36,7 +36,9 @@ def load_env(path=".env"):
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
+                k = k.strip().lstrip("\ufeff")
+                v = v.strip().strip('"').strip("'")
+                os.environ.setdefault(k, v)
 
 
 load_env()
@@ -88,14 +90,27 @@ def llm_chat(messages, mock=False):
         base.rstrip("/") + "/chat/completions",
         data=json.dumps({"model": model, "messages": messages, "temperature": 0.2}).encode(),
         headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    url = req.full_url
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.load(resp)["choices"][0]["message"]["content"]
+            body = resp.read().decode("utf-8", "ignore")
+            status, final_url = resp.status, resp.geturl()
+            ctype = resp.headers.get("Content-Type", "")
     except urllib.error.HTTPError as e:
         raise SystemExit(f"✗ AI 服務回傳錯誤 {e.code}：{e.read().decode('utf-8', 'ignore')[:300]}\n"
                          "  401/403 多半是金鑰錯誤或權限不足；404 多半是網址或模型名稱打錯。")
     except urllib.error.URLError as e:
         raise SystemExit(f"✗ 連不上 AI 服務：{e.reason}\n  請確認網路連線與 .env 裡的 LLM_BASE_URL。")
+    try:
+        return json.loads(body)["choices"][0]["message"]["content"]
+    except (json.JSONDecodeError, KeyError, IndexError):
+        # 回應不是預期的 JSON：把診斷資訊印出來（不含金鑰），方便判斷是網址錯還是服務異常
+        raise SystemExit(
+            "✗ AI 服務的回應格式不對，無法讀取回答。\n"
+            f"  呼叫網址：{url}\n  實際網址：{final_url}\n"
+            f"  狀態碼：{status}　內容類型：{ctype or '(無)'}\n"
+            f"  回應開頭：{body[:200] or '(空白)'}\n"
+            "  若回應是網頁(HTML)或空白，多半是 .env 的 LLM_BASE_URL 打錯。")
 
 
 def mock_llm(messages):
