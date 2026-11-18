@@ -195,7 +195,7 @@ def run_engine(records, rules, programs, project=True, selected=()):
         "caps": main["caps"],
         "free_elective_credits": main["free_elective_credits"],
         "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"], "done": v["done"],
-                         "eligible": v["eligible"],
+                         "eligible": v["eligible"], "無法自動檢核": v["manual"],
                          "groups": [{k2: g[k2] for k2 in ("id", "got", "need", "got_credits", "need_credits", "courses")}
                                     for g in v["groups"]],
                          "必修必選可選課號": {g["id"]: g["options"] for g in v["groups"] if g["id"] != "選修"}}

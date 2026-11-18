@@ -109,7 +109,8 @@
         if (inEq.length > 1) hits = hits.filter((r) => !inEq.slice(1).includes(r));
       }
       hits.forEach((r) => counted.add(r.code));
-      const credits = hits.reduce((s, r) => s + r.credits, 0);
+      const raw = hits.reduce((s, r) => s + r.credits, 0);
+      const credits = g.max_credits ? Math.min(raw, g.max_credits) : raw;  // 例：國際事務每個領域最多採計 8 學分
       const okCourses = hits.length >= (g.min_courses || 0);
       const okCredits = credits >= (g.min_credits || 0);
       return { id: g.id, got: hits.length, need: g.min_courses || 0, got_credits: credits, need_credits: g.min_credits || null,
@@ -117,10 +118,13 @@
     });
     const intern = records.filter((r) => (program.internship_prefix || []).some((p) => r.code.startsWith(p)));
     const internCredits = Math.min(intern.reduce((s, r) => s + r.credits, 0), program.internship_max_credits ?? 0);
-    const credits = records.filter((r) => counted.has(r.code)).reduce((s, r) => s + r.credits, 0) + internCredits;
-    const eligible = !(program.exclude_colleges || []).includes(deptRules?.college);
-    return { name: program.name, groups, credits, need: program.min_credits, eligible,
-             done: credits >= program.min_credits && groups.every((g) => g.done) };
+    const credits = groups.reduce((s, g) => s + g.got_credits, 0) + internCredits;
+    const college = deptRules?.college;
+    const eligible = !(program.exclude_colleges || []).includes(college)
+      && (!program.include_colleges || program.include_colleges.includes(college));
+    // manual：PDF 沒有列課號，無法自動判斷是否修畢
+    return { name: program.name, groups, credits, need: program.min_credits, eligible, manual: !!program.manual,
+             done: !program.manual && credits >= program.min_credits && groups.every((g) => g.done) };
   }
 
   const sum = (rs) => rs.reduce((s, r) => s + r.credits, 0);
@@ -274,7 +278,7 @@
       free_elective_credits: rep.free_elective_credits,
       programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, {
         name: v.name, credits: v.credits, need: v.need, done: v.done,
-        eligible: v.eligible,
+        eligible: v.eligible, "無法自動檢核": v.manual,
         groups: v.groups.map(({ id, got, need, got_credits, need_credits, courses }) => ({ id, got, need, got_credits, need_credits, courses })),
         "必修必選可選課號": Object.fromEntries(v.groups.filter((g) => g.id !== "選修").map((g) => [g.id, g.options])) }])),
     };
@@ -404,7 +408,7 @@
     // 使用者勾選、且可修的學分學程：補學程缺口
     selected.forEach((k, i) => {
       const pr = rep.programs[k];
-      if (!pr || pr.done || !pr.eligible) return;
+      if (!pr || pr.done || !pr.eligible || pr.manual) return;
       const codes = new Set(programs[k].groups.flatMap((g) => Object.keys(g.courses)));
       openNow.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([50 + i, o, `${pr.name}尚缺`]));
     });
@@ -426,7 +430,7 @@
       r.electives.forEach((e) => (parts[e.id] = (e.need_courses ? 3 * Math.max(0, e.need_courses - e.got_courses) : 0)
         + (e.need_credits ? Math.max(0, e.need_credits - e.got_credits) : 0)));
       Object.values(r.programs).forEach((p) => {
-        if (!p.eligible) return;
+        if (!p.eligible || p.manual) return;
         parts[p.name] = Math.max(0, p.need - p.credits) + p.groups.reduce((s, g) =>
           s + 3 * Math.max(0, g.need - g.got) + (g.need_credits ? Math.max(0, g.need_credits - g.got_credits) : 0), 0);
       });

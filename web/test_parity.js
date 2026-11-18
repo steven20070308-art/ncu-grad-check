@@ -55,7 +55,7 @@ function shape(rep) {
     free: rep.free_elective_credits,
     grad: [rep.graduation.graduated, rep.graduation.min_more, rep.graduation.unmet.map((u) => u.id + u.gap)],
     failed: rep.failed.map((r) => r.code),
-    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.eligible, v.groups.map((g) => [g.got, g.got_credits, g.done])]])),
+    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.eligible, v.manual, v.groups.map((g) => [g.got, g.got_credits, g.done])]])),
   };
 }
 
@@ -82,7 +82,7 @@ def shape(rep):
       'free': rep['free_elective_credits'],
       'grad': [rep['graduation']['graduated'], rep['graduation']['min_more'], [u['id'] + str(u['gap']) for u in rep['graduation']['unmet']]],
       'failed': [r['code'] for r in rep['failed']],
-      'programs': {k: [v['credits'], v['done'], v['eligible'], [[g['got'], g['got_credits'], g['done']] for g in v['groups']]] for k, v in rep['programs'].items()},
+      'programs': {k: [v['credits'], v['done'], v['eligible'], v['manual'], [[g['got'], g['got_credits'], g['done']] for g in v['groups']]] for k, v in rep['programs'].items()},
     }
 out = {}
 for d, ts in cases.items():
@@ -115,6 +115,11 @@ eq("未勾選學程時不顯示學程", Object.keys(G.check(ba, records, program
 const both = [{ term: "t", code: "BA3004", name: "x", attr: "必修", credits: 3, grade: "80" }, { term: "t", code: "IM1018", name: "x", attr: "必修", credits: 3, grade: "80" }];
 eq("企管學程：BA3004 與 IM1018 只算一門", G.checkProgram(programs.BA, both, false, { college: "經濟" }).groups[0].got, 1);
 eq("企管學程：管院學生不可修", G.checkProgram(programs.BA, both, false, ba).eligible, false);
+const intl = ["CC0421","CC0418","GS3126","GS3224","GS3225"].map((code) => ({ term: "t", code, name: code, attr: "通識", credits: 2, grade: "80" }));
+eq("國際事務：外交決策最多採計 8 學分", G.checkProgram(programs.INTL, intl, false, ba).groups[1].got_credits, 8);
+eq("AI跨域：管院學生不適用理工版", G.checkProgram(programs.AI_STEM, [], false, ba).eligible, false);
+eq("AI跨域：管院學生適用文管客版", G.checkProgram(programs.AI_HUM, [], false, ba).eligible, true);
+eq("認知神經：無法自動檢核", G.checkProgram(programs.COGNEURO, intl, false, ba).done, false);
 const report = { main: { total: { got: 69, need: 128 } } };
 eq("稽核-差值", G.audit("你還差 59 學分", report, ""), []);
 eq("稽核-編造", G.audit("你還差 50 學分", report, ""), [50]);

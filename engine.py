@@ -61,17 +61,21 @@ def check_program(program, transcript, project=None, dept_rules=None):
             if len(in_eq) > 1:
                 hits = [r for r in hits if r not in in_eq[1:]]
         counted.update(r["code"] for r in hits)
-        credits = _sum(hits)
+        credits = min(_sum(hits), g["max_credits"]) if g.get("max_credits") else _sum(hits)  # 例：國際事務每領域最多 8 學分
         done = len(hits) >= (g.get("min_courses") or 0) and credits >= (g.get("min_credits") or 0)
         groups.append({"id": g["id"], "got": len(hits), "need": g.get("min_courses") or 0, "got_credits": credits,
                        "need_credits": g.get("min_credits"), "done": done,
                        "courses": [r["code"] for r in hits], "options": list(g["courses"])})
     intern = [r for r in records if _has_prefix(r["code"], program.get("internship_prefix"))]
     intern_credits = min(_sum(intern), program.get("internship_max_credits", 0))
-    credits = _sum([r for r in records if r["code"] in counted]) + intern_credits
-    eligible = (dept_rules or {}).get("college") not in program.get("exclude_colleges", [])
+    credits = sum(g["got_credits"] for g in groups) + intern_credits
+    college = (dept_rules or {}).get("college")
+    eligible = (college not in program.get("exclude_colleges", [])
+                and ("include_colleges" not in program or college in program["include_colleges"]))
+    manual = bool(program.get("manual"))  # PDF 沒有列課號，無法自動判斷
     return {"name": program["name"], "groups": groups, "credits": credits, "need": program["min_credits"],
-            "eligible": eligible, "done": credits >= program["min_credits"] and all(g["done"] for g in groups)}
+            "eligible": eligible, "manual": manual,
+            "done": not manual and credits >= program["min_credits"] and all(g["done"] for g in groups)}
 
 
 def _program_set(programs, names, core_only, exclude):

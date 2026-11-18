@@ -254,7 +254,8 @@ const PROGRAMS = /*__PROGRAMS_114__*/null;
 const DEPTS = /*__DEPT_RULES__*/[].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
 const COMING = ["其他科系：提供應修科目表即可加入"];
 // 課務組公告的 114 學年度學分學程（尚未收錄者先列名稱）
-const ALL_TRACKS = ["人工智慧探索應用","人工智慧工業應用","人工智慧自然語言技術","人工智慧視覺技術應用","人工智慧資訊安全技術","前瞻半導體","天文","統計","量子技術","企業管理","英文MBA","永續企業","電子商務(EC)","會計","財務金融","財務工程","金融科技","企業資源規劃","商業智慧與分析","社會企業與社會創新","影響力衡量與管理","菁英領導elite","創意與創業","巨量資料分析","人工智慧技術應用國際","半導體（國際）","地球科學資訊","環境地球科學","氣候與環境變遷","台灣聯合大學系統「太空科技與工程」","認知神經科學","生科職涯","智慧生醫晶片","社會企業","法律","智慧製造","跨領域社會參與","敘事與數位實踐","國際事務","人工智慧跨域應用","跨領域榮譽","法律與政治","華語文教學"];
+const ALL_TRACKS = [["人工智慧探索應用等 5 個 TAICA 學程","72-75"],["前瞻半導體","77"],["天文","24"],["統計","47"],["量子技術","65"],["企業管理","01"],["英文MBA","27"],["永續企業","43"],["電子商務(EC)","34"],["會計","03"],["財務金融","02"],["財務工程","26"],["金融科技","62"],["企業資源規劃","14"],["商業智慧與分析","49"],["社會企業與社會創新","64"],["影響力衡量與管理","67"],["菁英領導elite","69"],["創意與創業","46"],["巨量資料分析","51"],["人工智慧技術應用國際","79"],["半導體（國際）","76"],["地球科學資訊","19"],["環境地球科學","20"],["氣候與環境變遷","48"],["太空科技與工程","56"],["認知神經科學","50"],["生科職涯","68"],["智慧生醫晶片","78"],["社會企業","52"],["法律","71"],["智慧製造","66"],["跨領域社會參與","53"],["敘事與數位實踐","55"],["國際事務","57"],["人工智慧跨域應用","58_59"],["跨領域榮譽","63"],["法律與政治","70"],["華語文教學","38"]];
+const pdfId = (url) => ((url || "").match(/114[_/]([\d_-]+)\.pdf$/) || [])[1];
 const selectedTracks = () => [...document.querySelectorAll("#tracks input:checked")].map((x) => x.value);
 const SAMPLE = /*__SAMPLE_PASTE__*/"";
 const OFFERINGS_TEXT = /*__OFFERINGS__*/[];
@@ -276,11 +277,19 @@ function initTracks() {
   const progs = DEPTS[0].programs.programs;
   let saved = [];
   try { saved = JSON.parse(localStorage.getItem("gc-tracks") || "[]"); } catch (e) { saved = []; }
-  $("tracks").innerHTML = Object.entries(progs).map(([k, p]) => `<label class="check" for="tr-${k}">
-    <input type="checkbox" id="tr-${k}" value="${k}"${saved.includes(k) ? " checked" : ""}>${esc(p.name)}<span class="hint">（${esc(p.college)}）</span></label>`).join("");
-  const have = Object.values(progs).map((p) => p.name.replace("學分學程", ""));
-  $("tracks-todo").textContent = ALL_TRACKS.filter((n) => !have.some((h) => h.includes(n) || n.includes(h))).join("、")
-    + "。這些學程的修課辦法還沒整理進來，提供 PDF 即可加入。";
+  const byCollege = {};
+  Object.entries(progs).forEach(([k, p]) => (byCollege[p.college] ||= []).push([k, p]));
+  const mine = state.dept.rules.college;
+  const order = Object.keys(byCollege).sort((a, b) => (b === mine) - (a === mine));
+  $("tracks").innerHTML = order.map((c) => `<details${c === mine || byCollege[c].some(([k]) => saved.includes(k)) ? " open" : ""}>
+    <summary>${esc(c)}（${byCollege[c].length}）</summary>
+    <div style="display:grid;gap:4px;margin-top:6px">${byCollege[c].map(([k, p]) => `<label class="check" for="tr-${k}">
+      <input type="checkbox" id="tr-${k}" value="${k}"${saved.includes(k) ? " checked" : ""}>${esc(p.name)}</label>`).join("")}</div></details>`).join("");
+  const have = new Set(Object.values(progs).map((p) => pdfId(p.source)));
+  const missing = ALL_TRACKS.filter(([, id]) => !have.has(id)).map(([n]) => n);
+  $("tracks-todo").textContent = missing.length
+    ? missing.join("、") + "。這些學程的修課辦法還沒整理進來，提供 PDF 即可加入。"
+    : "課務組公告的學程都已收錄。";
   document.querySelectorAll("#tracks input").forEach((el) => el.addEventListener("change", () => {
     try { localStorage.setItem("gc-tracks", JSON.stringify(selectedTracks())); } catch (e) { /* 無法儲存就算了 */ }
     run();
@@ -376,8 +385,9 @@ function render() {
   $("progs").innerHTML = progList.map(([k, p]) => {
     const def = state.dept.programs[k];
     return `<div>
-    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不能修這個學程（${esc(def.eligibility || "")}）。</p>`}
-    <div class="reqs">${reqRow(p.name, p.credits, p.need, " 學分")}
+    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不適用這個學程${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
+    ${p.manual ? `<p class="notice warn">這個學程的辦法沒有列出課號，無法自動檢核，以下僅列出修課規定。</p>` : ""}
+    <div class="reqs">${p.manual ? `<div class="req"><span class="name">${esc(p.name)}</span><span class="val">需 ${p.need} 學分</span></div>` : reqRow(p.name, p.credits, p.need, " 學分")}
     ${p.groups.filter((g) => g.need || g.need_credits).map((g) => g.need ? reqRow(g.id, g.got, g.need, " 門") : reqRow(g.id, g.got_credits, g.need_credits, " 學分")).join("")}</div>
     ${p.groups.map((g) => `<details><summary>${esc(g.id)}可選課程（${g.options.length}）</summary>
       <div class="chips">${g.options.map((c) => chip(c, g.courses.includes(c))).join("")}</div></details>`).join("")}
