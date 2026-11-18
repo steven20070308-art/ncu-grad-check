@@ -85,7 +85,7 @@ def agent_records_ok(text):
 
 
 # ---------- LLM 呼叫 ----------
-TIMEOUT = int(os.getenv("LLM_TIMEOUT", "90"))  # 秒；推理型模型回應較慢
+TIMEOUT = int(os.getenv("LLM_TIMEOUT", "40"))  # 秒；每次等候上限
 RETRY_CODES = {429, 500, 502, 503, 504}  # 暫時性錯誤：服務忙碌、超過頻率限制
 
 
@@ -104,7 +104,9 @@ def llm_chat(messages, mock=False):
     models = [model] + [m.strip() for m in os.getenv("LLM_FALLBACK_MODEL", "").split(",") if m.strip()]
     last_error = ""
     for m in models:
-        for attempt in range(3):  # 每個模型最多試 3 次，間隔 2、4 秒
+        tries = 2 if m == model else 1  # 主模型試 2 次，備援模型各試 1 次，避免等太久
+        for attempt in range(tries):
+            print(f"  …詢問 {m}（最多等 {TIMEOUT} 秒）", flush=True)
             try:
                 answer = _call(base, key, m, messages)
                 global LAST_MODEL
@@ -124,9 +126,9 @@ def llm_chat(messages, mock=False):
             except (TimeoutError, ConnectionError, http.client.HTTPException) as e:
                 # 等候回應時逾時或連線被中斷：同樣視為暫時性錯誤
                 last_error = f"{m} {'逾時' if isinstance(e, TimeoutError) else '連線中斷'}"
-            if attempt < 2:
-                print(f"  …{last_error}，{2 ** (attempt + 1)} 秒後重試", flush=True)
-                time.sleep(2 ** (attempt + 1))
+            print(f"  …{last_error}", flush=True)
+            if attempt < tries - 1:
+                time.sleep(2)
     raise AIUnavailable(last_error)
 
 
