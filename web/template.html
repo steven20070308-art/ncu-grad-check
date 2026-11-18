@@ -152,6 +152,9 @@ footer a { color: var(--accent); }
         <textarea id="paste" spellcheck="false"></textarea>
       </label>
       <p class="hint">手動輸入格式：<code>課號 成績</code>，例如 <code>BA2000 85</code>；還在修的寫 <code>BA2000 修課中</code>；只寫課號視為已通過。</p>
+      <h2><span class="n">3</span>有修學分學程嗎？（可複選，沒有就不用勾）</h2>
+      <div id="tracks" style="display:grid;gap:6px"></div>
+      <details><summary>其他學程（資料整理中）</summary><p class="hint" id="tracks-todo"></p></details>
       <label class="check" for="project"><input type="checkbox" id="project" checked>把本學期修課中的課當成會通過，一起算進去</label>
       <div class="row">
         <button id="run" type="button">開始檢核</button>
@@ -184,7 +187,7 @@ footer a { color: var(--accent); }
 
       <section class="panel" aria-labelledby="prog-title">
         <h2 id="prog-title">學分學程</h2>
-        <p class="hint">管理學院各系的選修或「數位素養」規定都會用到這兩個學程的課，修學程的課可以同時累積學程學分（是否可重複認列請向系辦確認）。</p>
+        <p class="hint" id="prog-hint"></p>
         <div class="grid2" id="progs"></div>
       </section>
 
@@ -250,6 +253,9 @@ const G = window.GradCheck;
 const PROGRAMS = /*__PROGRAMS_114__*/null;
 const DEPTS = /*__DEPT_RULES__*/[].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
 const COMING = ["其他科系：提供應修科目表即可加入"];
+// 課務組公告的 114 學年度學分學程（尚未收錄者先列名稱）
+const ALL_TRACKS = ["人工智慧探索應用","人工智慧工業應用","人工智慧自然語言技術","人工智慧視覺技術應用","人工智慧資訊安全技術","前瞻半導體","天文","統計","量子技術","企業管理","英文MBA","永續企業","電子商務(EC)","會計","財務金融","財務工程","金融科技","企業資源規劃","商業智慧與分析","社會企業與社會創新","影響力衡量與管理","菁英領導elite","創意與創業","巨量資料分析","人工智慧技術應用國際","半導體（國際）","地球科學資訊","環境地球科學","氣候與環境變遷","台灣聯合大學系統「太空科技與工程」","認知神經科學","生科職涯","智慧生醫晶片","社會企業","法律","智慧製造","跨領域社會參與","敘事與數位實踐","國際事務","人工智慧跨域應用","跨領域榮譽","法律與政治","華語文教學"];
+const selectedTracks = () => [...document.querySelectorAll("#tracks input:checked")].map((x) => x.value);
 const SAMPLE = /*__SAMPLE_PASTE__*/"";
 const OFFERINGS_TEXT = /*__OFFERINGS__*/[];
 let OFFERINGS = [];
@@ -261,10 +267,24 @@ let state = { dept: null, records: [], rep: null, report: null };
 
 function deptOf(id) {
   const d = DEPTS.find((x) => x.id === id);
-  const programs = { ...d.programs };
-  const questions = programs.open_questions || [];
-  delete programs.open_questions;
+  const programs = d.programs.programs;
+  const questions = d.programs.open_questions || [];
   return { ...d, programs, questions, catalog: G.buildCatalog(d.rules, programs) };
+}
+
+function initTracks() {
+  const progs = DEPTS[0].programs.programs;
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem("gc-tracks") || "[]"); } catch (e) { saved = []; }
+  $("tracks").innerHTML = Object.entries(progs).map(([k, p]) => `<label class="check" for="tr-${k}">
+    <input type="checkbox" id="tr-${k}" value="${k}"${saved.includes(k) ? " checked" : ""}>${esc(p.name)}<span class="hint">（${esc(p.college)}）</span></label>`).join("");
+  const have = Object.values(progs).map((p) => p.name.replace("學分學程", ""));
+  $("tracks-todo").textContent = ALL_TRACKS.filter((n) => !have.some((h) => h.includes(n) || n.includes(h))).join("、")
+    + "。這些學程的修課辦法還沒整理進來，提供 PDF 即可加入。";
+  document.querySelectorAll("#tracks input").forEach((el) => el.addEventListener("change", () => {
+    try { localStorage.setItem("gc-tracks", JSON.stringify(selectedTracks())); } catch (e) { /* 無法儲存就算了 */ }
+    run();
+  }));
 }
 
 function initSelect() {
@@ -347,12 +367,23 @@ function render() {
     <div class="chips">${byTerm[tm].map((c) => `<span class="chip">${esc(c.name)}<span class="mono">${esc(c.codes[0])}·${c.credits}</span></span>`).join("")}</div></div>`).join("")
     : `<p class="notice">必修都修完了。</p>`;
 
-  $("progs").innerHTML = Object.values(rep.programs).map((p) => `<div>
+  const names = Object.assign({}, ...Object.values(state.dept.programs).map((p) => p.names || {}));
+  const chip = (c, have) => `<span class="chip${have ? " have" : ""}">${names[c] ? esc(names[c]) : ""}<span class="mono">${esc(c)}</span></span>`;
+  const progList = Object.entries(rep.programs);
+  $("prog-hint").textContent = progList.length
+    ? "學程進度不影響畢業判定。修學程的課可能同時算系上選修（是否可重複認列請向系辦確認）。"
+    : "沒有勾選學分學程。有修的話，在左邊第 3 步勾選，就會顯示進度並納入排課建議。";
+  $("progs").innerHTML = progList.map(([k, p]) => {
+    const def = state.dept.programs[k];
+    return `<div>
+    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不能修這個學程（${esc(def.eligibility || "")}）。</p>`}
     <div class="reqs">${reqRow(p.name, p.credits, p.need, " 學分")}
-    ${p.groups.filter((g) => g.need).map((g) => reqRow(g.id, g.got, g.need, " 門")).join("")}</div>
-    ${p.groups.filter((g) => g.id !== "選修").map((g) => `<details><summary>${esc(g.id)}可選課號（${g.options.length}）</summary>
-      <div class="chips">${g.options.map((c) => `<span class="chip${g.courses.includes(c) ? " have" : ""}"><span class="mono">${esc(c)}</span></span>`).join("")}</div></details>`).join("")}
-  </div>`).join("");
+    ${p.groups.filter((g) => g.need || g.need_credits).map((g) => g.need ? reqRow(g.id, g.got, g.need, " 門") : reqRow(g.id, g.got_credits, g.need_credits, " 學分")).join("")}</div>
+    ${p.groups.map((g) => `<details><summary>${esc(g.id)}可選課程（${g.options.length}）</summary>
+      <div class="chips">${g.options.map((c) => chip(c, g.courses.includes(c))).join("")}</div></details>`).join("")}
+    ${(def.notes || []).length ? `<ul class="notes">${def.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+  </div>`;
+  }).join("");
 
   $("notes").innerHTML = [...rep.notes, ...dept.questions].map((n) => `<li>${esc(n)}</li>`).join("")
     + (rep.failed.length ? `<li>未通過、不計學分的課：${rep.failed.map((r) => esc(r.code)).join("、")}</li>` : "");
@@ -368,7 +399,7 @@ function run() {
     return false;
   }
   state.records = parsed.records;
-  state.rep = G.check(state.dept.rules, parsed.records, state.dept.programs, $("project").checked);
+  state.rep = G.check(state.dept.rules, parsed.records, state.dept.programs, $("project").checked, selectedTracks());
   state.report = { main: G.slimReport(state.rep) };
   const parts = [`讀到 ${parsed.records.length} 門課（${parsed.mode}）`];
   if (parsed.problems.length) parts.push(`${parsed.problems.length} 行看不懂已略過`);
@@ -390,8 +421,8 @@ function simulate() {
   const plan = codes.map((code) => ({ term: "試算", code, name: state.dept.catalog[code]?.name || code,
     attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
   const unknown = codes.filter((c) => !state.dept.catalog[c]);
-  const before = G.check(state.dept.rules, state.records, state.dept.programs, true);
-  const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true);
+  const before = G.check(state.dept.rules, state.records, state.dept.programs, true, selectedTracks());
+  const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true, selectedTracks());
   const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
   let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
   after.choose.forEach((g, i) => (rows += line(g.id, before.choose[i].got, g.got, `/ ${g.pick} 門`)));
@@ -432,7 +463,7 @@ function timetable(chosen) {
 function plan() {
   if (!state.records.length) return;
   const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS,
-    { maxCredits: +$("plan-max").value, year: +$("plan-year").value });
+    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedTracks() });
   if (!r.chosen.length) {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
     return;
@@ -485,6 +516,7 @@ function showSources() {
     ...Object.values(state.dept.programs).map((p) => link(p.source, p.name))].join("、");
 }
 initSelect();
+initTracks();
 showSources();
 $("paste").value = SAMPLE;
 $("run").addEventListener("click", run);

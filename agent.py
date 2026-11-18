@@ -172,9 +172,9 @@ def template_answer(rep):
 
 
 # ---------- 2. 路由 + 3. 計算 ----------
-def run_engine(records, rules, programs, project=True):
+def run_engine(records, rules, programs, project=True, selected=()):
     """跑規則引擎，並整理成給 AI 的摘要（欄位與網頁版 slimReport 一致）。"""
-    main = engine.check(rules, records, programs, project)
+    main = engine.check(rules, records, programs, project, selected)
     # 只留 AI 需要的欄位，降低 token 用量
     return {
         "total": main["total"],
@@ -195,7 +195,9 @@ def run_engine(records, rules, programs, project=True):
         "caps": main["caps"],
         "free_elective_credits": main["free_elective_credits"],
         "programs": {k: {"name": v["name"], "credits": v["credits"], "need": v["need"], "done": v["done"],
-                         "groups": [{k2: g[k2] for k2 in ("id", "got", "need", "courses")} for g in v["groups"]],
+                         "eligible": v["eligible"],
+                         "groups": [{k2: g[k2] for k2 in ("id", "got", "need", "got_credits", "need_credits", "courses")}
+                                    for g in v["groups"]],
                          "必修必選可選課號": {g["id"]: g["options"] for g in v["groups"] if g["id"] != "選修"}}
                      for k, v in main["programs"].items()},
     }
@@ -266,19 +268,19 @@ def audit(answer, report, question):
 
 
 # ---------- 主流程 ----------
-def run(paste_text, question, rules, programs, mock=False):
+def run(paste_text, question, rules, programs, mock=False, selected=()):
     records, problems = parse_transcript(paste_text)
     result = {"parsed_courses": len(records), "parse_problems": problems}
 
     codes = find_course_codes(question)
     if codes:  # 路由：試算
         plan, unknown = planned_records(codes, programs)
-        report = {"before": run_engine(records, rules, programs),
-                  "main": run_engine(records + plan, rules, programs),
+        report = {"before": run_engine(records, rules, programs, selected=selected),
+                  "main": run_engine(records + plan, rules, programs, selected=selected),
                   "planned": codes, "unknown_codes": unknown}
         result["route"] = "試算"
     else:      # 路由：解釋
-        report = {"main": run_engine(records, rules, programs)}
+        report = {"main": run_engine(records, rules, programs, selected=selected)}
         result["route"] = "解釋"
 
     try:
@@ -300,6 +302,7 @@ if __name__ == "__main__":
     ap.add_argument("--rules", default="rules/ba_114.json")
     ap.add_argument("--programs", default="rules/programs_114.json")
     ap.add_argument("--mock", action="store_true", help="不呼叫 AI，用離線模擬")
+    ap.add_argument("--track", default="", help="有修的學分學程代號，逗號分隔，例如 ERP,BIA")
     ap.add_argument("--show-report", action="store_true")
     args = ap.parse_args()
 
@@ -307,14 +310,15 @@ if __name__ == "__main__":
         rules = json.load(f)
     with open(args.programs, encoding="utf-8") as f:
         programs = json.load(f)
-    programs.pop("open_questions", None)
+    programs = programs["programs"]
+    selected = [x.strip() for x in args.track.split(",") if x.strip()]
     with open(args.paste, encoding="utf-8") as f:
         text = f.read()
 
     if not agent_records_ok(text):
         raise SystemExit("✗ 解析：沒有讀到任何課程，已停止（避免把 0 學分當成真的結果）。\n"
                          "  請確認檔案內容是成績表格，或把檔案傳給開發者檢查格式。")
-    out = run(text, args.ask, rules, programs, args.mock)
+    out = run(text, args.ask, rules, programs, args.mock, selected)
     print(f"[解析] {out['parsed_courses']} 門課；無法解析 {len(out['parse_problems'])} 段")
     using_ai = not args.mock and all(os.getenv(k) for k in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"))
     ai_label = (LAST_MODEL or f"{os.getenv('LLM_MODEL')}(未成功)") if using_ai else "離線模擬"

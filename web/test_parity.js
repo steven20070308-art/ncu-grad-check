@@ -6,8 +6,8 @@ const fs = require("fs");
 const G = require("./gradcheck.js");
 
 const DEPTS = ["ba_114", "ec_114", "fm_113", "im_114"];
-const programs = JSON.parse(fs.readFileSync("rules/programs_114.json", "utf8"));
-delete programs.open_questions;
+const programs = JSON.parse(fs.readFileSync("rules/programs_114.json", "utf8")).programs;
+const ALL = Object.keys(programs);
 
 // 固定亂數種子，讓測試可重現
 let seed = 20261118;
@@ -55,7 +55,7 @@ function shape(rep) {
     free: rep.free_elective_credits,
     grad: [rep.graduation.graduated, rep.graduation.min_more, rep.graduation.unmet.map((u) => u.id + u.gap)],
     failed: rep.failed.map((r) => r.code),
-    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.groups.map((g) => g.got)]])),
+    programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, [v.credits, v.done, v.eligible, v.groups.map((g) => [g.got, g.got_credits, g.done])]])),
   };
 }
 
@@ -69,7 +69,7 @@ fs.writeFileSync("/tmp/parity_cases.json", JSON.stringify(cases));
 const pyOut = JSON.parse(execFileSync("python3", ["-c", `
 import json, engine
 cases = json.load(open('/tmp/parity_cases.json', encoding='utf-8'))
-p = json.load(open('rules/programs_114.json', encoding='utf-8')); p.pop('open_questions')
+p = json.load(open('rules/programs_114.json', encoding='utf-8'))['programs']
 def shape(rep):
     return {
       'total': rep['total'], 'earned': rep['earned'], 'ongoing': rep['ongoing'],
@@ -82,12 +82,12 @@ def shape(rep):
       'free': rep['free_elective_credits'],
       'grad': [rep['graduation']['graduated'], rep['graduation']['min_more'], [u['id'] + str(u['gap']) for u in rep['graduation']['unmet']]],
       'failed': [r['code'] for r in rep['failed']],
-      'programs': {k: [v['credits'], v['done'], [g['got'] for g in v['groups']]] for k, v in rep['programs'].items()},
+      'programs': {k: [v['credits'], v['done'], v['eligible'], [[g['got'], g['got_credits'], g['done']] for g in v['groups']]] for k, v in rep['programs'].items()},
     }
 out = {}
 for d, ts in cases.items():
     r = json.load(open(f'rules/{d}.json', encoding='utf-8'))
-    out[d] = [[shape(engine.check(r, t, p, proj)) for proj in (False, True)] for t in ts]
+    out[d] = [[shape(engine.check(r, t, p, proj, list(p))) for proj in (False, True)] for t in ts]
 print(json.dumps(out, ensure_ascii=False))
 `], { maxBuffer: 64 * 1024 * 1024 }).toString());
 
@@ -96,7 +96,7 @@ for (const id of DEPTS) {
   const rules = JSON.parse(fs.readFileSync(`rules/${id}.json`, "utf8"));
   cases[id].forEach((t, i) => [false, true].forEach((proj, j) => {
     total++;
-    const js = JSON.stringify(shape(G.check(rules, t, programs, proj)));
+    const js = JSON.stringify(shape(G.check(rules, t, programs, proj, ALL)));
     const py = JSON.stringify(pyOut[id][i][j]);
     if (js !== py) {
       fail++;
@@ -111,6 +111,10 @@ const { records } = G.parseTable(fs.readFileSync("data/sample_paste.txt", "utf8"
 const eq = (label, a, b) => { total++; if (JSON.stringify(a) !== JSON.stringify(b)) { fail++; console.log("✗", label, JSON.stringify(a), "≠", JSON.stringify(b)); } };
 eq("範例成績頁門數", records.length, 29);
 eq("範例總學分(試算)", G.check(ba, records, programs, true).total, { got: 69, need: 128 });
+eq("未勾選學程時不顯示學程", Object.keys(G.check(ba, records, programs, true).programs), []);
+const both = [{ term: "t", code: "BA3004", name: "x", attr: "必修", credits: 3, grade: "80" }, { term: "t", code: "IM1018", name: "x", attr: "必修", credits: 3, grade: "80" }];
+eq("企管學程：BA3004 與 IM1018 只算一門", G.checkProgram(programs.BA, both, false, { college: "經濟" }).groups[0].got, 1);
+eq("企管學程：管院學生不可修", G.checkProgram(programs.BA, both, false, ba).eligible, false);
 const report = { main: { total: { got: 69, need: 128 } } };
 eq("稽核-差值", G.audit("你還差 59 學分", report, ""), []);
 eq("稽核-編造", G.audit("你還差 50 學分", report, ""), [50]);

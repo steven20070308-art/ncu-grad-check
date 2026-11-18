@@ -48,23 +48,30 @@ def _has_prefix(code, prefixes):
     return any(code.startswith(p) for p in prefixes or [])
 
 
-def check_program(program, transcript, project=None):
-    """檢核單一學分學程：各組最低門數 + 總學分，實習至多認列上限。"""
+def check_program(program, transcript, project=None, dept_rules=None):
+    """檢核單一學分學程：各組最低門數/學分 + 總學分。
+    equiv：可互相替代的課號（例：BA3004 或 IM1018）只算一門；實習有認列上限。"""
     records = [r for r in transcript if passed(r, project)]
-    result = {"name": program["name"], "groups": [], "credits": 0}
     counted = set()
+    groups = []
     for g in program["groups"]:
         hits = [r for r in records if r["code"] in g["courses"] and r["code"] not in counted]
+        for eq in g.get("equiv", []):
+            in_eq = [r for r in hits if r["code"] in eq]
+            if len(in_eq) > 1:
+                hits = [r for r in hits if r not in in_eq[1:]]
         counted.update(r["code"] for r in hits)
-        result["groups"].append({"id": g["id"], "got": len(hits), "need": g["min_courses"],
-                                 "courses": [r["code"] for r in hits], "options": list(g["courses"])})
-    intern = [r for r in records if _has_prefix(r["code"], program["internship_prefix"])]
-    intern_credits = min(_sum(intern), program["internship_max_credits"])
-    result["credits"] = _sum([r for r in records if r["code"] in counted]) + intern_credits
-    result["need"] = program["min_credits"]
-    result["done"] = result["credits"] >= result["need"] and all(
-        g["got"] >= g["need"] for g in result["groups"])
-    return result
+        credits = _sum(hits)
+        done = len(hits) >= (g.get("min_courses") or 0) and credits >= (g.get("min_credits") or 0)
+        groups.append({"id": g["id"], "got": len(hits), "need": g.get("min_courses") or 0, "got_credits": credits,
+                       "need_credits": g.get("min_credits"), "done": done,
+                       "courses": [r["code"] for r in hits], "options": list(g["courses"])})
+    intern = [r for r in records if _has_prefix(r["code"], program.get("internship_prefix"))]
+    intern_credits = min(_sum(intern), program.get("internship_max_credits", 0))
+    credits = _sum([r for r in records if r["code"] in counted]) + intern_credits
+    eligible = (dept_rules or {}).get("college") not in program.get("exclude_colleges", [])
+    return {"name": program["name"], "groups": groups, "credits": credits, "need": program["min_credits"],
+            "eligible": eligible, "done": credits >= program["min_credits"] and all(g["done"] for g in groups)}
 
 
 def _program_set(programs, names, core_only, exclude):
@@ -77,7 +84,7 @@ def _program_set(programs, names, core_only, exclude):
     return s
 
 
-def check(rules, transcript, programs=None, project=None):
+def check(rules, transcript, programs=None, project=None, selected=()):
     project = PROJECT if project is None else project
     programs = programs or {}
     records = [r for r in transcript if passed(r, project)]
@@ -176,11 +183,12 @@ def check(rules, transcript, programs=None, project=None):
     rep["free_elective_credits"] = _sum(free)
     rep["total"] = {"got": _sum([r for r in records if "進修英文" not in r["name"]]) - bucket_excess - cap_excess,
                     "need": rules["min_total_credits"]}
-    rep["earned"] = check(rules, transcript, programs, False)["total"]["got"] if project else rep["total"]["got"]
+    rep["earned"] = check(rules, transcript, programs, False, ())["total"]["got"] if project else rep["total"]["got"]
     rep["ongoing"] = rep["total"]["got"] - rep["earned"]
     rep["failed"] = [r for r in transcript if not passed(r, project)
                      and str(r.get("grade", "")).strip() not in IN_PROGRESS]
-    rep["programs"] = {k: check_program(p, transcript, project) for k, p in programs.items()}
+    # 只檢核使用者勾選的學分學程；學程不影響畢業判定
+    rep["programs"] = {k: check_program(programs[k], transcript, project, rules) for k in selected if k in programs}
     rep["notes"] = rules["warnings"]
     rep["graduation"] = graduation_status(rep)
     return rep
@@ -276,13 +284,14 @@ if __name__ == "__main__":
         rules = json.load(f)
     with open(args[1], encoding="utf-8") as f:
         programs = json.load(f)
-    questions = programs.pop("open_questions", [])
+    questions = programs.get("open_questions", [])
+    programs = programs["programs"]
     transcript = []
     for path in args[2:]:
         with open(path, encoding="utf-8") as f:
             transcript += json.load(f)
     if PROJECT:
         print("※ 試算模式：本學期修課中的課程視為及格\n")
-    rep = check(rules, transcript, programs)
+    rep = check(rules, transcript, programs, selected=list(programs))
     print_report(rules, rep)
     print_programs(rep, questions)
