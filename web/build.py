@@ -13,6 +13,8 @@ parts = {
     "/*__PROGRAMS_114__*/null": js("rules/programs_114.json"),
     '/*__SAMPLE_PASTE__*/""': json.dumps((root / "data/sample_paste.txt").read_text(encoding="utf-8"), ensure_ascii=False),
 }
+offerings = sorted((root / "data").glob("offerings_*.txt"))
+parts["/*__OFFERINGS__*/[]"] = json.dumps([f.read_text(encoding="utf-8") for f in offerings], ensure_ascii=False)
 for k, v in parts.items():
     assert k in html, f"template 缺少 {k}"
     html = html.replace(k, v.replace("</script", "<\\/script"))

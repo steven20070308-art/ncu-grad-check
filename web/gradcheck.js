@@ -268,7 +268,120 @@
 5. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
 6. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。`;
 
-  const api = { passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
+  // ---------- 開課資料：課程查詢頁複製的文字 ----------
+  const DAYS = "一二三四五六日";
+  const PERIODS = "1234Z56789ABC";  // 中大節次順序：Z 為中午，A-C 為晚上
+
+  function parseOfferings(text) {
+    const lines = text.replace(/\r/g, "").split("\n");
+    const starts = [];
+    lines.forEach((l, i) => { if (/^\d{5}$/.test(l.trim())) starts.push(i); });
+    const out = [];
+    starts.forEach((st, k) => {
+      const chunk = lines.slice(st + 1, k + 1 < starts.length ? starts[k + 1] : lines.length);
+      const head = (chunk[0] || "").match(/^([A-Z]{2,3}\d{4})-(\S+)\t(.+)$/);
+      if (!head) return;
+      const ci = chunk.findIndex((l) => /^\d+\t\S/.test(l));
+      const ti = chunk.findIndex((l) => /^(必修|選修|[^\t]+)\t(全|半)\t/.test(l));
+      if (ci < 0) return;
+      const [credits, place] = chunk[ci].split("\t");
+      const slots = [];
+      const re = /([一二三四五六日])([0-9ZABC]+)\//g;
+      let m;
+      while ((m = re.exec(place))) for (const p of m[2]) slots.push(m[1] + p);
+      const tagLine = chunk.slice(1, ci).find((l) => l.includes("[")) || "";
+      out.push({
+        serial: lines[st].trim(), code: head[1], section: head[2],
+        name: head[3].replace(/\s*\[已停開\]\s*/, "").trim(),
+        canceled: head[3].includes("已停開"),
+        credits: parseInt(credits, 10), slots, place: place.trim(),
+        type: ti >= 0 ? chunk[ti].split("\t")[0] : "",
+        teachers: chunk.slice(1, ci).flatMap((l) => l.split("\t")).map((x) => x.trim())
+          .filter((x) => x && !x.startsWith("[") && !/[A-Za-z]{3,}|[，。、:：]|^與|^加退選|^不在|^本課程|^請|^選課前|^實際/.test(x)),
+        gradOnly: false,
+        noFirstRound: tagLine.includes("不開放初選"),
+        english: tagLine.includes("授課語言:英語"),
+        note: chunk.slice(2, ci).filter((l) => !l.includes("[") && /[，。]|合班|密碼卡|筆電/.test(l)).join(" ").trim(),
+      });
+    });
+    return out;
+  }
+
+  const conflicts = (a, b) => a.slots.some((x) => b.slots.includes(x));
+  const levelOf = (code) => parseInt(code.replace(/\D/g, "")[0], 10);
+
+  /* 下學期排課建議：依優先序挑課，避開衝堂與已修/修課中的課，不超過學分上限。
+   * 優先序：還沒修的必修 → 擇N 尚缺 → 選修規則尚缺（學程必選、本系選修、數位素養）。 */
+  function planNextTerm(rules, programs, transcript, offerings, opts = {}) {
+    const maxCredits = opts.maxCredits ?? 21;
+    const taken = new Set(transcript.filter((r) => passed(r, true)).map((r) => r.code));
+    const rep = check(rules, transcript, programs, true);
+    const programCore = new Set(), programAll = new Set();
+    Object.values(programs).forEach((p) => p.groups.forEach((g) => Object.keys(g.courses).forEach((k) => {
+      programAll.add(k); if (g.id !== "選修") programCore.add(k);
+    })));
+    // 大學部可修：課號千位數 1-5，或 7 開頭但列在學程課表內（碩博同修）
+    const open = offerings.filter((o) => !o.canceled && o.credits > 0 && !taken.has(o.code)
+      && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programAll.has(o.code))));
+    const reasons = [];
+    const todoCodes = new Set(Object.values(rep.required).flatMap((v) => v.todo.flatMap((c) => c.codes)));
+    open.filter((o) => todoCodes.has(o.code)).forEach((o) => reasons.push([1, o, "必修，尚未修"]));
+    rep.choose.filter((g) => g.got < g.pick).forEach((g) => {
+      const codes = new Set(g.options.flatMap((c) => c.codes));
+      open.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([2, o, `${g.id}，還差 ${g.pick - g.got} 門`]));
+    });
+    (rules.elective_rules || []).forEach((e, i) => {
+      const r = rep.electives[i];
+      if (r.done) return;
+      let ok = () => false;
+      if (e.type === "program_core") ok = (o) => programCore.has(o.code);
+      else if (e.type === "prefix") ok = (o) => hasPrefix(o.code, e.code_prefix) && !todoCodes.has(o.code);
+      else if (e.type === "program_set") ok = (o) => programAll.has(o.code) && !hasPrefix(o.code, e.exclude_prefix);
+      else if (e.type === "elective_total") ok = (o) => o.type === "選修";
+      const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";
+      open.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
+    });
+    // 同一門課只留優先序最高的理由；學程課優先於一般選修
+    const best = new Map();
+    reasons.sort((a, b) => a[0] - b[0] || (programCore.has(b[1].code) - programCore.has(a[1].code)));
+    reasons.forEach(([pr, o, why]) => {
+      const key = o.code;
+      if (!best.has(key)) best.set(key, { priority: pr, code: o.code, name: o.name, credits: o.credits, why, sections: [] });
+      if (best.get(key).priority === pr) best.get(key).sections.push(o);
+    });
+    const candidates = [...best.values()];
+    // 「缺口分數」：還差的必修學分＋擇N缺門＋各選修規則缺口。每加一門課都重算，只收真正能縮小缺口的課，
+    // 避免例如學程必選只差 2 門卻排了 3 門。
+    const gapParts = (r) => {
+      const parts = {};
+      Object.entries(r.required).forEach(([g, v]) => (parts[g] = v.need_credits - v.done_credits));
+      r.choose.forEach((g) => (parts[g.id] = 3 * Math.max(0, g.pick - g.got)));
+      r.electives.forEach((e) => (parts[e.id] = (e.need_courses ? 3 * Math.max(0, e.need_courses - e.got_courses) : 0)
+        + (e.need_credits ? Math.max(0, e.need_credits - e.got_credits) : 0)));
+      return parts;
+    };
+    const total = (parts) => Object.values(parts).reduce((a, b) => a + b, 0);
+    const asRecord = (c) => ({ term: "排課建議", code: c.code, name: c.name, attr: "選修", credits: c.credits, grade: "未到" });
+    const chosen = [];
+    let credits = 0, current = gapParts(rep);
+    for (const c of candidates) {
+      if (credits + c.credits > maxCredits) { c.skipped = "超過學分上限"; continue; }
+      const next = gapParts(check(rules, transcript.concat(chosen.map(asRecord), [asRecord(c)]), programs, true));
+      if (total(next) >= total(current)) { c.skipped = "前面排的課已經滿足這項要求"; continue; }
+      const sec = c.sections.find((s) => chosen.every((x) => !conflicts(x.section, s)));
+      if (!sec) { c.skipped = "每個班別都和已排的課衝堂"; continue; }
+      // 理由寫實際縮小的那一項缺口
+      const helped = Object.keys(next).filter((k) => next[k] < current[k]);
+      const why = helped.map((k) => `補${k}`).join("、") + (programCore.has(c.code) ? "（也累積學分學程）" : "");
+      chosen.push({ ...c, why, section: sec });
+      credits += c.credits;
+      current = next;
+    }
+    const after = check(rules, transcript.concat(chosen.map(asRecord)), programs, true);
+    return { chosen, credits, candidates, before: rep, after, maxCredits };
+  }
+
+  const api = { parseOfferings, planNextTerm, DAYS, PERIODS, passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
                 slimReport, audit, SYSTEM_PROMPT, IN_PROGRESS };
   if (typeof module !== "undefined") module.exports = api;
   else root.GradCheck = api;

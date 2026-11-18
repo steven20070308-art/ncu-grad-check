@@ -115,6 +115,16 @@ details .chips { margin-top: 8px; }
 .diff td.n { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
 .diff .up { color: var(--ok); font-weight: 600; }
 
+.tt { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+.tt th, .tt td { border: 1px solid var(--line); padding: 4px; text-align: center; vertical-align: top; height: 30px; }
+.tt th { color: var(--muted); font-weight: 500; background: var(--paper); }
+.tt th.p { width: 36px; font-family: var(--font-mono); }
+.tt td.on { background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+.ttwrap { overflow-x: auto; }
+.plan { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.plan li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.plan li:first-child { border-top: 0; }
+.plan .why { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
 .answer { white-space: pre-wrap; font-size: 14.5px; line-height: 1.75; margin: 0; }
 .notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
 footer { font-size: 12.5px; color: var(--muted); }
@@ -177,6 +187,23 @@ footer a { color: var(--accent); }
         <div class="grid2" id="progs"></div>
       </section>
 
+      <section class="panel" aria-labelledby="plan-title">
+        <h2 id="plan-title">排課建議</h2>
+        <p class="hint" id="plan-src"></p>
+        <div class="row">
+          <label for="plan-max" style="display:flex;gap:6px;align-items:center">學分上限
+            <select id="plan-max" style="width:auto"></select></label>
+          <button id="plan-run" type="button">產生排課建議</button>
+        </div>
+        <div class="grid2" id="plan-out"></div>
+        <details>
+          <summary>更新開課資料（貼上課程查詢頁）</summary>
+          <p class="hint">在課程查詢系統查好後，整頁複製貼在這裡。可以一次貼好幾頁或好幾個系，會和現有資料合併。</p>
+          <textarea id="off-paste" spellcheck="false" style="min-height:90px"></textarea>
+          <div class="row"><button id="off-add" type="button" class="ghost">加入開課資料</button></div>
+        </details>
+      </section>
+
       <div class="grid2">
         <section class="panel" aria-labelledby="sim-title">
           <h2 id="sim-title">試算：如果我再修這些課</h2>
@@ -221,6 +248,9 @@ const PROGRAMS = /*__PROGRAMS_114__*/null;
 const DEPTS = /*__DEPT_RULES__*/[].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
 const COMING = ["其他科系：提供應修科目表即可加入"];
 const SAMPLE = /*__SAMPLE_PASTE__*/"";
+const OFFERINGS_TEXT = /*__OFFERINGS__*/[];
+let OFFERINGS = [];
+let OFFERINGS_LABEL = "";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -330,6 +360,7 @@ function run() {
   msg.className = parsed.problems.length || parsed.guessed.length ? "notice warn" : "notice";
   msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
   render();
+  if (OFFERINGS.length) plan();
   $("sim-out").innerHTML = "";
   $("ai-answer").textContent = "";
   return true;
@@ -359,6 +390,42 @@ function simulate() {
     + (unknown.length ? `<p class="hint">${unknown.map(esc).join("、")} 不在規則表裡，先以 3 學分、非學程課計算。</p>` : "")
     + `<p class="hint">試算一律把本學期修課中的課當成會通過。</p>`;
   state.report = { before: G.slimReport(before), main: G.slimReport(after), planned: codes };
+}
+
+function loadOfferings(texts, label) {
+  const map = new Map(OFFERINGS.map((o) => [o.serial, o]));
+  texts.forEach((t) => G.parseOfferings(t).forEach((o) => map.set(o.serial, o)));
+  OFFERINGS = [...map.values()];
+  if (label) OFFERINGS_LABEL = label;
+  const depts = [...new Set(OFFERINGS.map((o) => o.code.slice(0, 2)))].join("、");
+  $("plan-src").textContent = `開課資料：${OFFERINGS_LABEL}，共 ${OFFERINGS.length} 個班（課號開頭 ${depts}）。只會從這份資料裡挑課，其他系的課要先加入開課資料。`;
+}
+
+function timetable(chosen) {
+  const used = new Set(chosen.flatMap((c) => c.section.slots));
+  const days = [..."一二三四五"].concat([..."六日"].filter((d) => [...used].some((x) => x[0] === d)));
+  const last = Math.max(8, ...[...used].map((x) => G.PERIODS.indexOf(x[1])));
+  const rows = [...G.PERIODS].slice(0, last + 1);
+  const at = (slot) => chosen.find((c) => c.section.slots.includes(slot));
+  return `<div class="ttwrap"><table class="tt"><thead><tr><th class="p">節</th>${days.map((d) => `<th>${d}</th>`).join("")}</tr></thead><tbody>
+    ${rows.map((p) => `<tr><th class="p">${p}</th>${days.map((d) => { const c = at(d + p); return c ? `<td class="on">${esc(c.name)}</td>` : "<td></td>"; }).join("")}</tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+function plan() {
+  if (!state.records.length) return;
+  const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS, { maxCredits: +$("plan-max").value });
+  if (!r.chosen.length) {
+    $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
+    return;
+  }
+  const skipped = r.candidates.filter((c) => c.skipped);
+  $("plan-out").innerHTML = `<div>${timetable(r.chosen)}
+      <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p></div>
+    <div><ul class="plan">${r.chosen.map((c) => `<li><span><b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
+      <span class="mono">${c.credits} 學分</span>
+      <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span></li>`).join("")}</ul>
+    ${skipped.length ? `<details><summary>沒排進去的課（${skipped.length}）</summary><ul class="notes">${skipped.map((c) => `<li>${esc(c.name)} ${esc(c.code)}：${esc(c.skipped)}</li>`).join("")}</ul></details>` : ""}</div>`;
 }
 
 async function initAI() {
@@ -405,6 +472,17 @@ $("project").addEventListener("change", run);
 $("clear").addEventListener("click", () => { $("paste").value = ""; $("paste").focus(); });
 $("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); });
 $("sim-run").addEventListener("click", simulate);
+$("plan-max").innerHTML = [12, 15, 18, 21, 24, 25].map((n) => `<option${n === 21 ? " selected" : ""}>${n}</option>`).join("");
+$("plan-run").addEventListener("click", plan);
+$("off-add").addEventListener("click", () => {
+  const before = OFFERINGS.length;
+  loadOfferings([$("off-paste").value], "內建資料＋你加入的資料");
+  const added = OFFERINGS.length - before;
+  $("plan-src").textContent += added ? `（剛加入 ${added} 個班）` : "（沒有讀到新的班，請確認貼上的是課程查詢結果）";
+  $("off-paste").value = "";
+  plan();
+});
+loadOfferings(OFFERINGS_TEXT, "115-1 學期（示範用；正式使用時請換成下學期的開課資料）");
 run();
 initAI();
 </script>
