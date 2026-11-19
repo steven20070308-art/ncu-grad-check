@@ -1,0 +1,314 @@
+流水號
+課號-班別	課程名稱/備註	授課教師	學分	時間/教室	選修別	全/半	人數限制	分發條件	課程綱要
+09001
+GS2064-*	鋼琴音樂作品欣賞
+Piano Literature Appreciation
+[授課語言:英語] [密碼卡:部份使用]	曾韻心
+2	二78/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09002
+GS2065-*	聽故事到說故事-故事分析與展演
+Transition from Audience to Speaker: Story Analysis and Presentation
+[密碼卡:部份使用]	康珮
+2	四56/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09003
+GS2152-*	經典古典音樂與電影配樂之賞析
+Famous Classical Music and Score Music Appreciation
+[密碼卡:部份使用]	陳慧娟
+2	一56/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09004
+GS2153-*	西方古典音樂欣賞
+Introduction to Western Music and Musician
+[密碼卡:部份使用]	翁立美
+2	二9A/O-122 (綜教館-122 )
+選修	半	120	分發條件	課程綱要
+09005
+GS2156-*	精神能力(SQ)—IQ與EQ之外的生命資本
+SQ(Spiritual Quotient)—Beyond IQ and EQ
+[密碼卡:部份使用]	程進發
+2	三12/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09006
+GS2161-*	跨領域思辨
+Cross-disciplinary critical thinking
+本課程由跨領域榮譽學分學程與跨領域榮譽微學程學生優先修習，其餘學生 亦歡迎修習本課程。
+[密碼卡:全部使用] [不開放初選]	陳宣毅
+1	一Z/S4-208 (健雄館(科學四館)-208 )
+選修	半	50	分發條件	課程綱要
+09007
+GS2246-*	西洋古典音樂入門賞析
+Introduction to Western Classical Music
+[授課語言:英語] [密碼卡:部份使用]	曾韻心
+2	二56/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09008
+GS2456-*	體驗客家
+Exploring Hakka
+[密碼卡:部份使用]	陳彥蓉
+2	一34/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09009
+GS2522-*	日常生活中的記憶心理學
+The psychology of memory in everyday life
+[密碼卡:部份使用]	鄭仕坤
+2	四34/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09010
+GS2603-*	文化創意產業與生活美學
+Cultural and Creative Industries with Aesthetics of Living
+[密碼卡:部份使用]	劉阿榮
+2	一34/O-122 (綜教館-122 )
+選修	半	120	分發條件	課程綱要
+09011
+GS3024-*	社會企業
+Social Enterprise
+[密碼卡:部份使用]	陳彥蓉
+2	一56/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09012
+GS3056-*	地方知識與社會
+Local knowledge ans society
+[密碼卡:部份使用]	傅寶玉
+2	一78/A-106 (文學一館-106 )
+必修	半	50	分發條件	課程綱要
+09013
+GS3070-*	數位敘事
+digital storytelling
+[密碼卡:部份使用]	杜聖聰
+3	四234/O-214 (綜教館-214 )
+選修	半	50	分發條件	課程綱要
+09014
+GS3073-*	AI人工智慧導論
+Introduction to Artificial Intelligence
+同步遠距教學
+[密碼卡:全部使用] [不開放初選]	李秉鴻
+3	二ABC/I-002 (志希館-002 )
+選修	半	40	分發條件	課程綱要
+09015
+GS3074-*	國際組織
+International Organization
+[授課語言:英語]	章榮明
+2	一12/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09016
+GS3080-*	智慧財產權概論
+Intellectual Property Right
+[密碼卡:部份使用]	楊燕枝
+2	三34/O-214 (綜教館-214 )
+選修	半	120	分發條件	課程綱要
+09017
+GS3081-*	全球化都市與社會空間
+Global Cities and Social Spaces
+本課程為全英語授課。
+[授課語言:英語] [密碼卡:部份使用]	賀彥豪
+2	一78/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09018
+GS3082-*	身心障礙與台灣社會
+Disabilities and Taiwanese Society
+[密碼卡:部份使用]	鄭揚宜
+2	一34/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09019
+GS3083-*	國際政治
+International Politics
+[密碼卡:部份使用]	韓保中
+2	四78/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09020
+GS3084-*	智慧城市與交通
+Smart Cities and Urban Traffic
+本課程為全英語授課。
+[授課語言:英語] [密碼卡:部份使用]	賀彥豪
+2	三34/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09021
+GS3087-*	刑法概論 [已停開]
+The basic concepts of criminal law
+[密碼卡:部份使用]	溫祖德
+2	一78/TR-A201 (教研大樓-A201 )
+選修	半	50	分發條件	課程綱要
+09022
+GS3089-*	社會參與議題工作坊(二)
+SocialEngagement:Workshop2
+[密碼卡:全部使用] [不開放初選]	蔡錫錚
+鄭揚宜
+吳忻怡
+2	六AB/O-122 (綜教館-122 )
+選修	半	50	分發條件	課程綱要
+09023
+GS3092-*	風險與社會
+Risk and Society
+姜貞吟
+徐郁雯
+2	三34/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09024
+GS3097-*	消費社會學
+Sociology of consumption
+[密碼卡:部份使用]	李玉瑛
+2	四34/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09025
+GS3098-*	國際科技政治
+International Politics of Technology
+[授課語言:英語] [密碼卡:部份使用]	周冠竹
+2	三56/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09026
+GS3099-*	科技政策理論與實踐
+Heory and Practice of Technology Policy
+[密碼卡:部份使用]	周冠竹
+2	三78/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09027
+GS3101-*	地緣政治
+Geopolitics
+[密碼卡:部份使用]	蕭育和
+2	二78/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09028
+GS3102-*	國際政治經濟學
+International Political Economy
+[授課語言:英語] [密碼卡:部份使用]	蕭育和
+2	二56/A-106 (文學一館-106 )
+選修	半	50	分發條件	課程綱要
+09029
+GS3103-*	國際太空政治
+The International Space Politics
+[密碼卡:部份使用]	鄭子真
+2	四34/TR-A201 (教研大樓-A201 )
+選修	半	50	分發條件	課程綱要
+09030
+GS3104-*	東北亞地緣政治
+The Geopolitics of Northeast Asia
+[密碼卡:部份使用]	鄭子真
+2	四56/TR-A201 (教研大樓-A201 )
+選修	半	50	分發條件	課程綱要
+09031
+GS3125-*	公民社會與民主行政發展
+Civil Society and the Development of Democratic Administration
+[密碼卡:部份使用]	韓保中
+2	二78/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09032
+GS3126-A	國際關係概論
+International Relations
+[密碼卡:部份使用]	韓保中
+2	二56/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09033
+GS3126-B	國際關係概論
+International Relations
+[授課語言:英語] [密碼卡:部份使用]	韓保中
+2	四34/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09034
+GS3150-*	生命教育
+Life Education
+[密碼卡:部份使用]	程進發
+2	三34/A-113 (文學一館-113 )
+選修	半	50	分發條件	課程綱要
+09035
+GS3225-*	戰爭與和平：近代世界外交史概論
+Introduction to History of International Relations
+章榮明
+2	一34/A-101 (文學一館-101 )
+選修	半	50	分發條件	課程綱要
+09036
+GS3510-*	大眾傳播與生活
+Mass Communication and Social Life
+[密碼卡:部份使用]	呂郁女
+2	四78/O-214 (綜教館-214 )
+選修	半	120	分發條件	課程綱要
+09037
+GS3552-*	資料蒐集與報告寫作
+Data Collection and Report Writing
+朱碧靜
+2	四9A/TR-A201 (教研大樓-A201 )
+選修	半	50	分發條件	課程綱要
+09038
+GS3632-*	台灣社會與族群想像
+Ethnic Imagination in Contemporary Taiwan
+[密碼卡:部份使用]	吳忻怡
+2	二56/TR-A202 (教研大樓-A202 )
+選修	半	50	分發條件	課程綱要
+09039
+GS3713-*	性別、科技與社會
+Gender, Technology and Society
+[密碼卡:部份使用]	姜貞吟
+楊燕枝
+3	四567/I-002 (志希館-002 )
+選修	半	50	分發條件	課程綱要
+09040
+GS3901-*	創造力之理論與技巧
+Theory and Skills of Creativity
+[密碼卡:部份使用]	黃金俊
+2	四9A/O-122 (綜教館-122 )
+選修	半	50	分發條件	課程綱要
+09041
+GS3902-*	創造力與多元智慧的理念與實踐
+Theory and Practice of Creativity and Multiple Intelligence
+[密碼卡:部份使用]	黃金俊
+2	四BC/O-122 (綜教館-122 )
+選修	半	50	分發條件	課程綱要
+09042
+GS4110-*	通識地球物理
+Introduction to Geophysics
+[授課語言:部分英語] [密碼卡:部份使用]	陳洲生
+2	一56/O-122 (綜教館-122 )
+選修	半	120	分發條件	課程綱要
+09043
+GS4406-*	認識大氣
+Understanding Atmosphere
+[密碼卡:部份使用]	王國英
+2	三34/TR-A001 (教研大樓-A001 )
+選修	半	120	分發條件	課程綱要
+09044
+GS4413-*	全球氣候變遷-從危機到轉機
+Global Climate Change crisises to opportunities
+[密碼卡:部份使用]	張哲明
+2	三34/O-122 (綜教館-122 )
+選修	半	120	分發條件	課程綱要
+09045
+GS4451-*	現代天文學簡介
+An Introduction to Modern Astronomy
+已修習CC0203(天文學導論)、CC0212(神秘的宇宙)不得修習本課程；本課程為全英語授課。
+[授課語言:英語] [密碼卡:部份使用]	木下大輔
+2	三78/TR-A203 (教研大樓-A203 )
+選修	半	130	分發條件	課程綱要
+09046
+GS4455-*	科技與財富平權
+Technology and Economic Equity
+[密碼卡:部份使用]	楊燕枝
+吳忻怡
+3	三678/I-002 (志希館-002 )
+選修	半	50	分發條件	課程綱要
+09047
+GS4456-*	神經科學的語言筆記
+A Concise Introduction to Neurolinguistics
+[密碼卡:部份使用]	徐峻賢
+2	四34/O-122 (綜教館-122 )
+選修	半	50	分發條件	課程綱要
+09048
+GS4504-A	設計思考與行動APP程式設計應用
+Design Thinking and Mobile Application Programming Design
+以非理工學院同學優先修習，建議已修習過程式相關課程者勿選本門課程
+[密碼卡:部份使用]	葉俞佛
+2	五12/I-002 (志希館-002 )
+選修	半	50	分發條件	課程綱要
+09049
+GS4504-B	設計思考與行動APP程式設計應用
+Design Thinking and Mobile Application Programming Design
+以非理工學院同學優先修習，建議已修習過程式相關課程者勿選本門課程
+[密碼卡:部份使用]	葉俞佛
+2	五34/I-002 (志希館-002 )
+選修	半	50	分發條件	課程綱要
+09050
+GS4508-*	科學、科技、歷史
+Science, Technology, History
+[密碼卡:全部使用] [不開放初選]	陳宣毅
+2	二AB/S4-208 (健雄館(科學四館)-208 )
+選修	半	20	分發條件	課程

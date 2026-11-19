@@ -124,6 +124,8 @@ details .chips { margin-top: 8px; }
 .plan { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .plan li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .plan li:first-child { border-top: 0; }
+.star { border: 0; background: none; padding: 0 4px 0 0; font-size: 16px; color: var(--accent, #c80); cursor: pointer; min-width: 0; box-shadow: none; }
+#star-chips button.chip { cursor: pointer; color: var(--ink); background: var(--paper); font-weight: 400; min-height: 0; }
 .plan .why { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
 .answer { white-space: pre-wrap; font-size: 14.5px; line-height: 1.75; margin: 0; }
 .notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
@@ -199,8 +201,17 @@ footer a { color: var(--accent); }
             <select id="plan-year" style="width:auto"><option value="1">大一</option><option value="2">大二</option><option value="3">大三</option><option value="4">大四</option></select></label>
           <label for="plan-max" style="display:flex;gap:6px;align-items:center">學分上限
             <select id="plan-max" style="width:auto"></select></label>
+          <label class="check" for="plan-mn"><input type="checkbox" id="plan-mn">加排全民國防教育（軍訓）</label>
           <button id="plan-run" type="button">產生排課建議</button>
         </div>
+        <details id="star-box">
+          <summary>想修的課（加星號，優先排進去）</summary>
+          <p class="hint">例如朋友推薦的通識、想上的體育。加星號的課會排在必修之後、其他選修之前；就算沒有補到缺口，只要不衝堂、不超過學分上限也會排進去。</p>
+          <div class="row"><input id="star-input" list="star-list" placeholder="輸入課名或課號，例：地緣政治、GS3101" style="flex:1;min-width:0">
+            <button id="star-add" type="button" class="ghost">加星號</button></div>
+          <datalist id="star-list"></datalist>
+          <div class="chips" id="star-chips"></div>
+        </details>
         <div class="grid2" id="plan-out"></div>
         <details>
           <summary>更新開課資料（貼上課程查詢頁）</summary>
@@ -459,7 +470,10 @@ function loadOfferings(texts, label) {
   if (label) OFFERINGS_LABEL = label;
   const depts = [...new Set(OFFERINGS.map((o) => o.code.slice(0, 2)))].join("、");
   $("plan-src").textContent = `開課資料：${OFFERINGS_LABEL}，共 ${OFFERINGS.length} 個班（課號開頭 ${depts}）。只會從這份資料裡挑課，其他系的課要先加入開課資料。`;
+  if (typeof renderStars === "function") renderStars();
 }
+
+const starBtn = (code) => `<button type="button" class="star" data-star="${esc(code)}" aria-pressed="${STARS.includes(code)}" aria-label="${STARS.includes(code) ? "取消星號" : "加星號"}">${STARS.includes(code) ? "★" : "☆"}</button>`;
 
 function timetable(chosen) {
   const used = new Set(chosen.flatMap((c) => c.section.slots));
@@ -472,10 +486,43 @@ function timetable(chosen) {
   </tbody></table></div>`;
 }
 
+let STARS = [];
+try { STARS = JSON.parse(localStorage.getItem("gc-stars") || "[]"); } catch (e) { STARS = []; }
+function saveStars() {
+  try { localStorage.setItem("gc-stars", JSON.stringify(STARS)); } catch (e) { /* 無法儲存就算了 */ }
+  renderStars();
+}
+function toggleStar(code) {
+  STARS = STARS.includes(code) ? STARS.filter((c) => c !== code) : STARS.concat(code);
+  saveStars();
+  plan();
+}
+function renderStars() {
+  const name = (c) => (OFFERINGS.find((o) => o.code === c) || {}).name || c;
+  $("star-chips").innerHTML = STARS.length ? STARS.map((c) => `<button type="button" class="chip" data-star="${esc(c)}" aria-label="移除 ${esc(name(c))} 的星號">★ ${esc(name(c))} <span class="mono">${esc(c)}</span> ✕</button>`).join("")
+    : `<span class="hint">還沒有加星號的課。</span>`;
+  const seen = new Set();
+  $("star-list").innerHTML = OFFERINGS.filter((o) => !o.canceled && !seen.has(o.code) && seen.add(o.code))
+    .map((o) => `<option value="${esc(o.code)} ${esc(o.name)}"></option>`).join("");
+}
+function addStarFromInput() {
+  const q = $("star-input").value.trim();
+  if (!q) return;
+  const code = (q.match(/^[A-Z]{2}[A-Z0-9]\d{3}/) || [])[0]
+    || (OFFERINGS.find((o) => o.code === q.toUpperCase() || o.name.replace(/\s/g, "") === q.replace(/\s/g, "")) || {}).code
+    || (OFFERINGS.find((o) => o.name.includes(q)) || {}).code;
+  if (!code) { $("star-input").value = ""; $("star-input").placeholder = `開課資料裡找不到「${q}」`; return; }
+  if (!STARS.includes(code)) STARS.push(code);
+  $("star-input").value = "";
+  saveStars();
+  plan();
+}
+
 function plan() {
   if (!state.records.length) return;
   const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS,
-    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedTracks() });
+    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedTracks(),
+      military: $("plan-mn").checked, favorites: STARS });
   if (!r.chosen.length) {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
     return;
@@ -485,10 +532,10 @@ function plan() {
       <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p>
       ${r.credits < r.maxCredits ? `<p class="hint">還有 ${r.maxCredits - r.credits} 學分空間：目前的必修與選修缺口都排進去了，剩下可以自由選修有興趣的課。</p>` : ""}
       ${r.later.length ? `<p class="hint">這學期也有開 ${r.later.map(esc).join("、")}，但應修科目表建議高年級再修，所以先不排。</p>` : ""}</div>
-    <div><ul class="plan">${r.chosen.map((c) => `<li><span><b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
+    <div><ul class="plan">${r.chosen.map((c) => `<li><span>${starBtn(c.code)}<b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
       <span class="mono">${c.credits} 學分</span>
       <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span></li>`).join("")}</ul>
-    ${skipped.length ? `<details><summary>沒排進去的課（${skipped.length}）</summary><ul class="notes">${skipped.map((c) => `<li>${esc(c.name)} ${esc(c.code)}：${esc(c.skipped)}</li>`).join("")}</ul></details>` : ""}</div>`;
+    ${skipped.length ? `<details><summary>沒排進去的課（${skipped.length}）</summary><ul class="notes">${skipped.map((c) => `<li>${starBtn(c.code)}${esc(c.name)} ${esc(c.code)}：${esc(c.skipped)}</li>`).join("")}</ul></details>` : ""}</div>`;
 }
 
 async function initAI() {
@@ -538,6 +585,10 @@ $("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); 
 $("sim-run").addEventListener("click", simulate);
 $("plan-max").innerHTML = [12, 15, 18, 21, 24, 25].map((n) => `<option${n === 21 ? " selected" : ""}>${n}</option>`).join("");
 $("plan-run").addEventListener("click", plan);
+$("plan-mn").addEventListener("change", plan);
+$("star-add").addEventListener("click", addStarFromInput);
+$("star-input").addEventListener("keydown", (e) => { if (e.key === "Enter") addStarFromInput(); });
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-star]"); if (b) toggleStar(b.dataset.star); });
 $("plan-year").addEventListener("change", plan);
 $("plan-max").addEventListener("change", plan);
 $("off-add").addEventListener("click", () => {

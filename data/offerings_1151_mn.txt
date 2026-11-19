@@ -1,0 +1,30 @@
+流水號
+課號-班別	課程名稱/備註	授課教師	學分	時間/教室	選修別	全/半	人數限制	分發條件	課程綱要
+05001
+MN3002-*	全民國防教育軍事訓練-國際情勢
+All-out Defense Education Military Training - International Situations
+曾修過同一科課程、外籍生(含陸生)不得修習 授課教師宋慶禾
+宋慶禾
+1	二56/TR-A204 (教研大樓-A204 )
+選修	半	60	分發條件	課程綱要
+05002
+MN3003-*	全民國防教育軍事訓練-防衛動員
+All-out Defense Education Military Training - Defense Mobilization
+曾修過同一科課程、外籍生(含陸生)不得修習 授課教師宋慶禾
+宋慶禾
+1	二78/TR-A204 (教研大樓-A204 )
+選修	半	60	分發條件	課程綱要
+05003
+MN3004-*	全民國防教育軍事訓練-國防科技
+All-out Defense Education Military Training - Defense Technology
+曾修過同一科課程、外籍生(含陸生)不得修習
+曾有志
+1	二78/TR-A203 (教研大樓-A203 )
+選修	半	100	分發條件	課程綱要
+05004
+MN3005-*	全民國防教育軍事訓練-全民國防
+All-out Defense Education Military Training - Civil Defense
+曾修過同一科課程、外籍生(含陸生)不得修習
+曾有志
+1	二56/TR-A205 (教研大樓-A205 )
+選修	半	60	分發條件	課程綱要

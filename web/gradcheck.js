@@ -390,10 +390,17 @@
     const programMine = new Set();
     Object.entries(programs).filter(([k]) => relevant.has(k))
       .forEach(([, p]) => p.groups.forEach((g) => Object.keys(g.courses).forEach((c) => programMine.add(c))));
-    const year = opts.year ?? 4;  // 下學期是大幾：只排建議學期不晚於這一年的必修
     const known = new Set(Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
       .flatMap((c) => c.codes));
-    const open = offerings.filter((o) => !o.canceled && o.credits > 0 && !taken.has(o.code)
+    const stars = new Set(opts.favorites || []);  // 使用者加星號、想優先修的課
+    const norm = (s) => String(s || "").replace(/[\s　]/g, "");
+    const takenNames = new Set(transcript.filter((r) => passed(r, true)).map((r) => norm(r.name)));
+    // 體育：0 學分但算次數。大一排大一體育，大二以上排興趣選項（不含代表隊、適應體育、PE4 開頭不列入畢業學分的班），同名課不重修
+    const peOk = (o) => o.code.startsWith("PE") && o.credits === 0 && !/隊|適應/.test(o.name) && !takenNames.has(norm(o.name))
+      && (year === 1 ? o.code.startsWith("PE1") : o.code.startsWith("PE2"));
+    const genOk = (o) => /^(GS|CC)/.test(o.code) && o.slots.length > 0 && !takenNames.has(norm(o.name));
+    const year = opts.year ?? 4;  // 下學期是大幾：只排建議學期不晚於這一年的必修
+    const open = offerings.filter((o) => !o.canceled && (o.credits > 0 || peOk(o)) && !taken.has(o.code)
       && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programMine.has(o.code)))
       // 5 字頭但標「必修」又不在本系規則裡的，多半是碩士班必修（例：EC5006 口語表達），不推薦
       && !(levelOf(o.code) >= 5 && o.type === "必修" && !known.has(o.code) && !programAll.has(o.code)));
@@ -414,16 +421,24 @@
       const r = rep.electives[i];
       if (r.done) return;
       let ok = () => false;
-      if (e.type === "program_core") ok = (o) => programCore.has(o.code);
+      // 只用這條規則列出的學程課表（例：企管系「學程必修/必選」只認 ERP、商業智慧）
+      const setOf = (coreOnly) => new Set((e.programs || []).flatMap((n) => (programs[n]?.groups || [])
+        .filter((g) => !coreOnly || g.id !== "選修").flatMap((g) => Object.keys(g.courses))));
+      if (e.type === "program_core") { const s = setOf(true); ok = (o) => s.has(o.code); }
       else if (e.type === "prefix") ok = (o) => hasPrefix(o.code, e.code_prefix) && !todoCodes.has(o.code)
         && !(e.exclude_name_contains || []).some((w) => (o.name || "").includes(w))
         && !(e.exclude_codes || []).includes(o.code);
-      else if (e.type === "program_set") ok = (o) => programAll.has(o.code) && !hasPrefix(o.code, e.exclude_prefix);
+      else if (e.type === "program_set") { const s = setOf(false); ok = (o) => s.has(o.code) && !hasPrefix(o.code, e.exclude_prefix); }
       else if (e.type === "outside") ok = (o) => !hasPrefix(o.code, e.exclude_prefix) && o.type === "選修";
       else if (e.type === "elective_total") ok = (o) => o.type === "選修";
       const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";
       openNow.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
     });
+    // 通識未滿、體育次數未滿：從通識中心、體育室的課補（只排在必修與系上選修之後）
+    rep.buckets.filter((b) => b.id === "通識" && b.got < b.need)
+      .forEach((b) => openNow.filter(genOk).forEach((o) => reasons.push([30, o, `通識還差 ${b.need - b.got} 學分`])));
+    rep.counts.filter((c) => c.id === "體育" && c.got < c.need)
+      .forEach((c) => openNow.filter(peOk).forEach((o) => reasons.push([31, o, `體育還差 ${c.need - c.got} 次`])));
     // 使用者勾選、且可修的學分學程：補學程缺口
     selected.forEach((k, i) => {
       const pr = rep.programs[k];
@@ -431,12 +446,22 @@
       const codes = new Set(programs[k].groups.flatMap((g) => Object.keys(g.courses)));
       openNow.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([50 + i, o, `${pr.name}尚缺`]));
     });
-    // 同一門課只留優先序最高的理由；學程課優先於一般選修
+    // 自選：全民國防教育（一學期排一門，勾選了就排在通識、體育之前，免得時段被佔走）與加星號的課。不補任何缺口，所以不做缺口檢查
+    const hasReason = new Set(reasons.map((x) => x[1].code));
+    if (opts.military) openNow.filter((o) => o.code.startsWith("MN") && !takenNames.has(norm(o.name)))
+      .forEach((o) => reasons.push([29, o, "全民國防教育（自選，是否計入畢業學分依各系規定）", true]));
+    openNow.filter((o) => stars.has(o.code) && !hasReason.has(o.code))
+      .forEach((o) => reasons.push([70, o, "你加星號的課", true]));
+    // 同一門課只留優先序最高的理由；同優先序時加星號的課優先，再來是學程課
     const best = new Map();
-    reasons.sort((a, b) => a[0] - b[0] || (programCore.has(b[1].code) - programCore.has(a[1].code)));
-    reasons.forEach(([pr, o, why]) => {
+    // 加星號的課：排在必修與擇N之後、其他選修之前，避免被一般選修佔走時段
+    reasons.forEach((x) => { if (stars.has(x[1].code) && x[0] > 2.5) x[0] = 2.5; });
+    reasons.sort((a, b) => a[0] - b[0] || (stars.has(b[1].code) - stars.has(a[1].code))
+      || (programCore.has(b[1].code) - programCore.has(a[1].code)));
+    reasons.forEach(([pr, o, why, force]) => {
       const key = o.code;
-      if (!best.has(key)) best.set(key, { priority: pr, code: o.code, name: o.name, credits: o.credits, why, sections: [] });
+      if (!best.has(key)) best.set(key, { priority: pr, code: o.code, name: o.name, credits: o.credits, why, force: !!force,
+                                          starred: stars.has(o.code), sections: [] });
       if (best.get(key).priority === pr) best.get(key).sections.push(o);
     });
     const candidates = [...best.values()];
@@ -444,6 +469,8 @@
     // 避免例如學程必選只差 2 門卻排了 3 門。
     const gapParts = (r) => {
       const parts = {};
+      r.buckets.forEach((b) => (parts[b.id] = Math.max(0, b.need - b.got)));
+      r.counts.forEach((c) => (parts[c.id] = 3 * Math.max(0, c.need - c.got)));
       Object.entries(r.required).forEach(([g, v]) => (parts[g] = v.need_credits - v.done_credits));
       r.choose.forEach((g) => (parts[g.id] = 3 * Math.max(0, g.pick - g.got)));
       r.electives.forEach((e) => (parts[e.id] = (e.need_courses ? 3 * Math.max(0, e.need_courses - e.got_courses) : 0)
@@ -457,18 +484,23 @@
       return parts;
     };
     const total = (parts) => Object.values(parts).reduce((a, b) => a + b, 0);
-    const asRecord = (c) => ({ term: "排課建議", code: c.code, name: c.name, attr: "選修", credits: c.credits, grade: "未到" });
+    const attrOf = (code) => (/^(GS|CC)/.test(code) ? "通識" : code.startsWith("PE") ? "體育" : "選修");
+    const asRecord = (c) => ({ term: "排課建議", code: c.code, name: c.name, attr: attrOf(c.code), credits: c.credits, grade: "未到" });
     const chosen = [];
     let credits = 0, current = gapParts(rep);
     for (const c of candidates) {
       if (credits + c.credits > maxCredits) { c.skipped = "超過學分上限"; continue; }
+      if (c.code.startsWith("MN") && c.force && chosen.some((x) => x.code.startsWith("MN"))) { c.skipped = "全民國防教育一學期只排一門"; continue; }
+      if (c.code.startsWith("PE") && chosen.some((x) => x.code.startsWith("PE"))) { c.skipped = "體育一學期只排一門"; continue; }
+      if (chosen.some((x) => norm(x.name) === norm(c.name))) { c.skipped = "已經排了同名的課"; continue; }
       const next = gapParts(check(rules, transcript.concat(chosen.map(asRecord), [asRecord(c)]), programs, true, selected));
-      if (total(next) >= total(current)) { c.skipped = "前面排的課已經滿足這項要求"; continue; }
+      if (!c.force && !c.starred && total(next) >= total(current)) { c.skipped = "前面排的課已經滿足這項要求"; continue; }
       const sec = c.sections.find((s) => chosen.every((x) => !conflicts(x.section, s)));
       if (!sec) { c.skipped = "每個班別都和已排的課衝堂"; continue; }
+      if (c.force) { chosen.push({ ...c, why: c.why, section: sec }); credits += c.credits; current = next; continue; }
       // 理由寫實際縮小的那一項缺口
       const helped = Object.keys(next).filter((k) => next[k] < current[k]);
-      const why = helped.map((k) => `補${k}`).join("、");
+      const why = helped.length ? helped.map((k) => `補${k}`).join("、") + (c.starred ? "（你加星號的課）" : "") : "你加星號的課";
       chosen.push({ ...c, why, section: sec });
       credits += c.credits;
       current = next;
