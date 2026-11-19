@@ -434,6 +434,11 @@
       const both = (o) => programCore.has(o.code) ? "（也算學分學程）" : "";
       openNow.filter(ok).forEach((o) => reasons.push([3 + i, o, `${e.id}尚缺${both(o)}`]));
     });
+    // 外文未滿：排大一英文。課群依學院（管理學院→管理課群，其他理學院等→科學課群）；初／中／高級班依英文分級，由使用者自己選
+    const freshEng = rules.college === "管理學院" ? ["LN1005", "LN1006"] : ["LN1003", "LN1004"];
+    rep.buckets.filter((b) => b.id === "外文" && b.got < b.need).forEach((b) => openNow
+      .filter((o) => freshEng.includes(o.code))
+      .forEach((o) => reasons.push([2, o, `外文還差 ${b.need - b.got} 學分（大一英文，請依英文分級選初／中／高級班）`])));
     // 通識未滿、體育次數未滿：從通識中心、體育室的課補（只排在必修與系上選修之後）
     rep.buckets.filter((b) => b.id === "通識" && b.got < b.need)
       .forEach((b) => openNow.filter(genOk).forEach((o) => reasons.push([30, o, `通識還差 ${b.need - b.got} 學分`])));
@@ -493,6 +498,7 @@
       if (c.code.startsWith("MN") && c.force && chosen.some((x) => x.code.startsWith("MN"))) { c.skipped = "全民國防教育一學期只排一門"; continue; }
       if (c.code.startsWith("PE") && chosen.some((x) => x.code.startsWith("PE"))) { c.skipped = "體育一學期只排一門"; continue; }
       if (chosen.some((x) => norm(x.name) === norm(c.name))) { c.skipped = "已經排了同名的課"; continue; }
+      if (!c.starred && genOk(c.sections[0]) && chosen.filter((x) => genOk(x.section)).length >= 2) { c.skipped = "通識一學期最多排兩門（加星號的不受限）"; continue; }
       const next = gapParts(check(rules, transcript.concat(chosen.map(asRecord), [asRecord(c)]), programs, true, selected));
       if (!c.force && !c.starred && total(next) >= total(current)) { c.skipped = "前面排的課已經滿足這項要求"; continue; }
       const sec = c.sections.find((s) => chosen.every((x) => !conflicts(x.section, s)));

@@ -1,0 +1,82 @@
+流水號
+課號-班別	課程名稱/備註	授課教師	學分	時間/教室	選修別	全/半	人數限制	分發條件	課程綱要
+10001
+TC1001-*	人工智慧導論
+Introduction to Artificial Intelligence
+成功大學，授課教師：朱威達，上課時間：星期四13:10-16:00，https://sites.google.com/view/taica-ncu/
+朱威達
+3	四567/*-*** (其他-*** )
+選修	半	35	分發條件	課程綱要
+10002
+TC1004-*	基礎程式設計(C++)
+Introduction to Programming (C++)
+陽明交通大學，授課教師：温宏斌，上課時間：星期一09:00-12:00，https://sites.google.com/view/taica-ncu/
+廖長彥
+3	一234/*-*** (其他-*** )
+選修	半	30	分發條件	課程綱要
+10003
+TC1005-*	統計學暨實習
+Statistics with Recitation
+臺灣大學，授課教師：李宗穎，上課時間：星期三09:10-12:10，https://sites.google.com/view/taica-ncu/
+[授課語言:英語]	范懿文
+3	三234/*-*** (其他-*** )
+選修	半	35	分發條件	課程綱要
+10004
+TC1006-*	生成式人工智慧與機器學習導論 [已停開]
+Introduction to Generative Artificial Intelligence and Machine Learning
+[不開放初選]		3	五678/*-*** (其他-*** )
+選修	半	30	分發條件	課程綱要
+10005
+TC5002-*	金融科技導論
+Introduction to FinTech
+臺灣大學，授課教師：張智星，上課時間：星期三09:10-12:10，https://sites.google.com/view/taica-ncu/
+張智星
+3	三234/*-*** (其他-*** )
+選修	半	35	分發條件	課程綱要
+10006
+TC5003-*	資料探勘與應用
+Data Mining: Concepts, Techniques, and Applications
+清華大學，授課教師：陳宜欣，上課時間：星期一09:00-12:00，https://sites.google.com/view/taica-ncu/
+[授課語言:英語]	陳宜欣
+3	一234/*-*** (其他-*** )
+選修	半	30	分發條件	課程綱要
+10007
+TC5004-*	自然語言處理
+Natural Language Processing
+清華大學，授課教師：高宏宇，上課時間：星期四09:00-12:00，https://sites.google.com/view/taica-ncu/
+高宏宇
+3	四234/*-*** (其他-*** )
+選修	半	35	分發條件	課程綱要
+10008
+TC5006-*	生成式AI：文字與圖像生成的原理與實務
+Generative AI: Text and Image Synthesis Principles and Practice
+政治大學，授課教師：蔡炎龍，星期二16:00-19:00，https://sites.google.com/view/taica-ncu/
+韓伯維
+3	二89A/*-*** (其他-*** )
+選修	半	50	分發條件	課程綱要
+10009
+TC5009-*	智慧人機互動
+Human-AI Interaction
+臺北科技大學，授課教師：韓秉軒，上課時間：星期四13:10-16:00，https://sites.google.com/view/taica-ncu/
+韓秉軒
+3	四567/*-*** (其他-*** )
+選修	半	35	分發條件	課程綱要
+10010
+TC5010-*	電腦視覺實務與深度學習 [已停開]
+Computer Vision Practice with Deep Learning
+[不開放初選]		3	五234/*-*** (其他-*** )
+選修	半	50	分發條件	課程綱要
+10011
+TC5001-*	機器學習
+Machine Learning
+臺灣大學，授課教師：林軒田，上課時間：星期三09:10-12:10，https://sites.google.com/view/taica-ncu/
+林軒田
+3	三234/*-*** (其他-*** )
+選修	半	10	分發條件	課程綱要
+10012
+TC5014-*	實體人工智慧
+Physical AI
+陽明交通大學，授課教師：陳奕廷，上課時間：星期二13:20-16:20，https://sites.google.com/view/taica-ncu/
+[授課語言:英語]	張嘉惠
+3	二567/*-*** (其他-*** )
+選修	半	30	分發條件	課程綱要
