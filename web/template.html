@@ -237,6 +237,17 @@ footer a { color: var(--accent); }
             <textarea id="ai-q" style="min-height:70px;font-family:var(--font-body);font-size:14px">我還差多少學分？下學期怎麼修比較好？</textarea>
           </label>
           <div class="row"><button id="ai-run" type="button">問 AI</button></div>
+          <details id="ai-key-box" hidden>
+            <summary id="ai-key-summary">設定 AI 金鑰（Gemini，免費）</summary>
+            <ol class="notes">
+              <li>到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 用 Google 帳號登入，按「Create API key」。</li>
+              <li>把金鑰貼在下面，按「儲存」。</li>
+            </ol>
+            <div class="row"><input id="ai-key" type="password" autocomplete="off" placeholder="貼上 Gemini API 金鑰（AIza 開頭）" style="flex:1;min-width:0">
+              <button id="ai-key-save" type="button" class="ghost">儲存</button>
+              <button id="ai-key-clear" type="button" class="ghost">清除</button></div>
+            <p class="hint">金鑰只存在這台裝置的瀏覽器裡，網頁會直接拿它向 Google 送出問題，不會經過其他伺服器、也不會上傳到 GitHub。送出的只有檢核摘要，沒有原始成績單。用公用電腦記得按「清除」。</p>
+          </details>
           <p class="hint" id="ai-status">AI 只能引用檢核結果裡的數字；回答後會自動稽核。</p>
           <p class="answer" id="ai-answer"></p>
         </section>
@@ -519,6 +530,7 @@ function addStarFromInput() {
 }
 
 function plan() {
+  state.lastPlan = null;
   if (!state.records.length) return;
   const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS,
     { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedTracks(),
@@ -527,6 +539,8 @@ function plan() {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
     return;
   }
+  state.lastPlan = { 共學分: r.credits, 排完後總學分: r.after.total.got, 畢業需: r.after.total.need,
+    課程: r.chosen.map((c) => ({ 課號: c.code, 課名: c.name, 學分: c.credits, 理由: c.why, 時間: c.section.place })) };
   const skipped = r.candidates.filter((c) => c.skipped);
   $("plan-out").innerHTML = `<div>${timetable(r.chosen)}
       <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p>
@@ -538,31 +552,111 @@ function plan() {
     ${skipped.length ? `<details><summary>沒排進去的課（${skipped.length}）</summary><ul class="notes">${skipped.map((c) => `<li>${starBtn(c.code)}${esc(c.name)} ${esc(c.code)}：${esc(c.skipped)}</li>`).join("")}</ul></details>` : ""}</div>`;
 }
 
+// ---------- 問 AI：三種來源，依序使用 ----------
+// 1. 在 Claude 裡開啟：用 Claude 的 AI
+// 2. AI_PROXY 有設定：用自己架的中繼站（金鑰放在中繼站，見 worker/README）
+// 3. 使用者自己的 Gemini 金鑰：存在瀏覽器，直接呼叫 Google
+const AI_PROXY = "";  // 例：https://ncu-grad-ai.<你的帳號>.workers.dev
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"];
+const KEY_STORE = "gc-gemini-key";
+const getKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } };
+
+async function fetchJSON(url, init, ms = 40000) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    const res = await fetch(url, { ...init, signal: ctl.signal });
+    const text = await res.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch (e) { body = null; }
+    return { status: res.status, body, text };
+  } catch (e) {
+    return { status: 0, body: null, text: e.name === "AbortError" ? "等太久沒有回應" : "連不上（網路或瀏覽器擋下）" };
+  } finally { clearTimeout(timer); }
+}
+
+// Gemini：主模型忙碌（429/5xx/逾時）就換備援模型
+async function askGemini(prompt, key, onStatus) {
+  let last = "";
+  for (const model of GEMINI_MODELS) {
+    onStatus(`AI 回答中…（${model}）`);
+    const r = await fetchJSON(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2 } }),
+    });
+    const text = r.body && r.body.candidates && r.body.candidates[0] && (r.body.candidates[0].content?.parts || []).map((x) => x.text || "").join("");
+    if (r.status === 200 && text) return { text, via: model };
+    const msg = (r.body && r.body.error && r.body.error.message) || r.text.slice(0, 120);
+    if (r.status === 400 || r.status === 401 || r.status === 403) {
+      const bad = /API key|API_KEY|permission/i.test(msg);
+      throw new Error(bad ? "金鑰無效或沒有權限，請重新貼一次金鑰" : `Google 回覆錯誤：${msg}`);
+    }
+    last = r.status ? `${model} 回覆 ${r.status}` : `${model} ${r.text}`;
+    if (r.status === 404) continue;  // 模型名稱停用了，換下一個
+  }
+  throw new Error(`所有模型都暫時無法回答（${last}）`);
+}
+
+async function askProxy(prompt, onStatus) {
+  onStatus("AI 回答中…");
+  const r = await fetchJSON(AI_PROXY, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
+  if (r.status === 200 && r.body && r.body.text) return { text: r.body.text, via: r.body.model || "中繼站" };
+  if (r.status === 429) throw new Error("今天的免費提問次數用完了，明天再試，或在下方設定自己的金鑰");
+  throw new Error((r.body && r.body.error) || `中繼站回覆 ${r.status || r.text}`);
+}
+
 async function initAI() {
   const btn = $("ai-run"), status = $("ai-status"), out = $("ai-answer");
   let sample = null;
   try { sample = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (e) { sample = null; }
-  if (!sample) {
-    btn.disabled = true;
-    status.textContent = "這個網址沒有連上 AI。在 Claude 裡開啟這個頁面才能使用；其他檢核功能都不受影響。";
-    return;
-  }
+  const keyBox = $("ai-key-box");
+  const refreshKeyUI = () => {
+    const has = !!getKey();
+    $("ai-key-summary").textContent = has ? "AI 金鑰：已設定（點開可更換或清除）" : "設定 AI 金鑰（Gemini，免費）";
+    if (!sample && !AI_PROXY) {
+      status.textContent = has ? "AI 只能引用檢核結果裡的數字；回答後會自動稽核。"
+        : "要使用 AI，請先在下面設定 Gemini 金鑰（約 2 分鐘，免費）。其他檢核功能不需要金鑰。";
+      keyBox.open = !has;
+    }
+  };
+  if (!sample) { keyBox.hidden = false; refreshKeyUI(); }
+  $("ai-key-save").addEventListener("click", () => {
+    const k = $("ai-key").value.trim();
+    if (!k) return;
+    try { localStorage.setItem(KEY_STORE, k); } catch (e) { status.textContent = "這個瀏覽器不允許儲存，金鑰只會在這次使用。"; window.__gcKey = k; }
+    $("ai-key").value = ""; refreshKeyUI(); keyBox.open = false;
+  });
+  $("ai-key-clear").addEventListener("click", () => { try { localStorage.removeItem(KEY_STORE); } catch (e) { /* 無妨 */ } window.__gcKey = ""; refreshKeyUI(); });
+
   btn.addEventListener("click", async () => {
     if (!state.report) return;
     const q = $("ai-q").value.trim() || "我還差多少學分？";
-    btn.disabled = true; out.textContent = ""; status.textContent = "AI 回答中…";
+    const key = getKey() || window.__gcKey || "";
+    if (!sample && !AI_PROXY && !key) { keyBox.hidden = false; keyBox.open = true; status.textContent = "請先設定 Gemini 金鑰。"; return; }
+    // 有排過課就一起附上，AI 才能回答「下學期怎麼修」
+    const report = state.lastPlan ? { ...state.report, 排課建議: state.lastPlan } : state.report;
+    const input = `${G.SYSTEM_PROMPT}\n\n學生問題：${q}\n【檢核報告】${JSON.stringify(report)}`;
+    btn.disabled = true; out.textContent = "";
+    const setStatus = (t) => { status.textContent = t; };
     try {
-      const input = `${G.SYSTEM_PROMPT}\n\n學生問題：${q}\n【檢核報告】${JSON.stringify(state.report)}`;
-      const res = await sample(input, { modelTier: "quick", cache: false, onText: ({ text }) => { out.textContent = text; } });
+      let res;
+      if (sample) {
+        setStatus("AI 回答中…");
+        const r = await sample(input, { modelTier: "quick", cache: false, onText: ({ text }) => { out.textContent = text; } });
+        res = { text: r.text, via: "Claude" };
+      } else if (AI_PROXY && !key) res = await askProxy(input, setStatus);
+      else res = await askGemini(input, key, setStatus);
       out.textContent = res.text;
-      const flags = G.audit(res.text, state.report, q);
-      status.innerHTML = flags.length
+      const flags = G.audit(res.text, report, q);
+      status.innerHTML = (flags.length
         ? `<span class="pill ask">稽核</span> 回答中的數字 ${flags.join("、")} 不在檢核結果裡，請自行確認。`
-        : `<span class="pill ok">稽核通過</span> 回答中的數字都能在檢核結果找到。`;
+        : `<span class="pill ok">稽核通過</span> 回答中的數字都能在檢核結果找到。`) + ` <span class="hint">（${esc(res.via)}）</span>`;
     } catch (err) {
+      const m = (err && err.message) || "未知錯誤";
       status.textContent = err && err.code === "rate_limited" ? "AI 使用次數暫時到上限，請稍後再試。"
         : err && err.code === "not_granted" ? "沒有取得使用 AI 的同意，其他功能仍可使用。"
-        : `AI 暫時無法回答（${(err && err.message) || "未知錯誤"}），上面的檢核結果仍然正確。`;
+        : `AI 暫時無法回答：${m}。上面的檢核結果仍然正確。`;
     } finally { btn.disabled = false; }
   });
 }

@@ -28,7 +28,11 @@
 - 線上使用：https://steven20070308-art.github.io/ncu-grad-check/ （需在 repo 設定開啟 GitHub Pages：Settings → Pages → main 分支 /docs）
 - 選科系 → 貼上成績頁或手動輸入「課號 成績」→ 立即看到逐項核對、還沒修的必修、學分學程進度與試算
 - **成績只在瀏覽器內計算，不會上傳**
-- 「問 AI」需在 Claude 裡開啟頁面才能使用；GitHub Pages 版會自動隱藏 AI，其餘功能不受影響
+- 「問 AI」三種接法，網頁自動選用：
+  1. 在 Claude 裡開啟頁面：直接使用 Claude
+  2. 使用者自己的 Gemini 金鑰：在「問 AI」區塊貼上金鑰（只存在該瀏覽器的 localStorage，直接呼叫 Google，不經過其他伺服器、不上傳 GitHub）。主模型忙碌時自動換備援模型
+  3. 選用的中繼站：部署 `worker/gemini-proxy.js` 到 Cloudflare Workers（金鑰放在 Cloudflare Secret，限制來源網站與每 IP 每日次數），把網址填入 `AI_PROXY`，使用者就不用金鑰（見 `worker/README.md`）
+- 有排過課時，排課建議會一起附給 AI，回答「下學期怎麼修」時以排課結果為準
 - 網頁的計算邏輯 `web/gradcheck.js` 與 Python 版逐項比對一致（`node web/test_parity.js`）
 - 修改規則或網頁後執行 `python web/build.py` 重新產生 `docs/index.html`
 
@@ -89,6 +93,7 @@ python agent.py --paste data/sample_paste.txt --ask "我想修 ERP 學程要注�
 | 檔案 | 用途 |
 |---|---|
 | `agent.py` | Agent 主程式：解析、路由、AI 解釋、稽核 |
+| `worker/gemini-proxy.js` | 選用的 Gemini 中繼站（Cloudflare Workers），讓網頁版不用金鑰也能問 AI |
 | `engine.py` | 規則引擎：畢業學分與學分學程計算 |
 | `rules/ba_114.json` | 企管系 114 學年度應修規則 |
 | `rules/im_114.json`、`fm_113.json`、`ec_114.json`、`op_114.json` | 資管、財金、經濟、光電系應修規則 |
