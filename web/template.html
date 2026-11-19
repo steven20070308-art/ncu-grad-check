@@ -556,7 +556,7 @@ function plan() {
 // 1. 在 Claude 裡開啟：用 Claude 的 AI
 // 2. AI_PROXY 有設定：用自己架的中繼站（金鑰放在中繼站，見 worker/README）
 // 3. 使用者自己的 Gemini 金鑰：存在瀏覽器，直接呼叫 Google
-const AI_PROXY = "";  // 例：https://ncu-grad-ai.<你的帳號>.workers.dev
+const AI_PROXY = "https://ncu-grad-ai.steven20070308.workers.dev";  // Cloudflare Worker 中繼站（worker/gemini-proxy.js），金鑰放在 Cloudflare Secret
 const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"];
 const KEY_STORE = "gc-gemini-key";
 const getKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } };
@@ -603,7 +603,7 @@ async function askProxy(prompt, onStatus) {
   const r = await fetchJSON(AI_PROXY, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
   if (r.status === 200 && r.body && r.body.text) return { text: r.body.text, via: r.body.model || "中繼站" };
   if (r.status === 429) throw new Error("今天的免費提問次數用完了，明天再試，或在下方設定自己的金鑰");
-  throw new Error((r.body && r.body.error) || `中繼站回覆 ${r.status || r.text}`);
+  throw new Error(((r.body && r.body.error) || `中繼站回覆 ${r.status || r.text}`) + "；也可以在下方設定自己的 Gemini 金鑰");
 }
 
 async function initAI() {
@@ -613,7 +613,8 @@ async function initAI() {
   const keyBox = $("ai-key-box");
   const refreshKeyUI = () => {
     const has = !!getKey();
-    $("ai-key-summary").textContent = has ? "AI 金鑰：已設定（點開可更換或清除）" : "設定 AI 金鑰（Gemini，免費）";
+    $("ai-key-summary").textContent = has ? "AI 金鑰：已設定（點開可更換或清除）"
+      : AI_PROXY ? "選用：改用自己的 Gemini 金鑰（不受每日次數限制）" : "設定 AI 金鑰（Gemini，免費）";
     if (!sample && !AI_PROXY) {
       status.textContent = has ? "AI 只能引用檢核結果裡的數字；回答後會自動稽核。"
         : "要使用 AI，請先在下面設定 Gemini 金鑰（約 2 分鐘，免費）。其他檢核功能不需要金鑰。";
