@@ -1,0 +1,1570 @@
+{
+  "MICRO:智慧永續生活": {
+    "name": "智慧永續生活微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0001.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4719": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4539": 3,
+          "GS4519": 2,
+          "GS4538": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "GA2004": 3,
+          "CI5043": 3
+        }
+      }
+    ],
+    "notes": [
+      "已依申請學期切換官方課程版本：114學年度第1學期（含）以前使用 GS4542；之後使用 GS4538。"
+    ],
+    "application_versions": [
+      {
+        "before_or_equal": "114-1",
+        "groups": [
+          {
+            "id": "基礎課程",
+            "min_courses": 1,
+            "courses": {
+              "GS4719": 3
+            }
+          },
+          {
+            "id": "核心課程",
+            "min_courses": 1,
+            "courses": {
+              "GS4539": 3,
+              "GS4519": 2,
+              "GS4542": 3
+            }
+          },
+          {
+            "id": "實作課程",
+            "min_courses": 1,
+            "courses": {
+              "GA2004": 3,
+              "CI5043": 3
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "MICRO:智慧數據分析與應用": {
+    "name": "智慧數據分析與應用微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0002.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4719": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "BA5029": 3,
+          "GS4539": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "IM2045": 3,
+          "IM2047": 2
+        }
+      }
+    ],
+    "notes": [
+      "已依申請學期切換官方課程版本：114學年度第1學期（含）以前為 BA5029、GS4539、GS4519、EC3121/EC3122 擇一核心課，必修實作 EC4080/EC4081；之後採新版課程規劃。"
+    ],
+    "application_versions": [
+      {
+        "before_or_equal": "114-1",
+        "groups": [
+          {
+            "id": "基礎課程",
+            "min_courses": 1,
+            "courses": {
+              "GS4719": 3
+            }
+          },
+          {
+            "id": "核心課程",
+            "min_courses": 1,
+            "courses": {
+              "BA5029": 3,
+              "GS4539": 3,
+              "GS4519": 2,
+              "EC3121": 3,
+              "EC3122": 3
+            },
+            "equiv": [
+              [
+                "EC3121",
+                "EC3122"
+              ]
+            ]
+          },
+          {
+            "id": "實作課程",
+            "min_courses": 1,
+            "courses": {
+              "EC4080": 3,
+              "EC4081": 3
+            },
+            "equiv": [
+              [
+                "EC4080",
+                "EC4081"
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "MICRO:社會探索": {
+    "name": "社會探索微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0006.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CC0417": 2,
+          "HK1005": 2,
+          "HK1006": 2
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "CC0415": 2,
+          "GS3819": 3,
+          "GS3082": 2,
+          "GS3632": 2,
+          "GS3063": 2
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "HK2026": 3,
+          "GS3639": 2,
+          "GS2003": 3
+        }
+      }
+    ]
+  },
+  "MICRO:創造力": {
+    "name": "創造力微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0007.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GS3902": 2,
+          "GS3901": 2,
+          "IP2004": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "GS2065": 2,
+          "GS2603": 2,
+          "GS3080": 2,
+          "GS3708": 2,
+          "GS4715": 2
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4504": 2,
+          "GS4540": 3,
+          "GS4713": 2,
+          "GS9802": 2,
+          "HK4034": 3
+        }
+      }
+    ]
+  },
+  "MICRO:跨領域榮譽": {
+    "name": "跨領域榮譽微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0014.pdf",
+    "min_credits": 8,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "必修基礎",
+        "min_courses": 1,
+        "courses": {
+          "GS2161": 1
+        }
+      },
+      {
+        "id": "其他基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4513": 2,
+          "GS4507": 2,
+          "GS2154": 2,
+          "GS4505": 2,
+          "IL1002": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "GS4508": 2,
+          "GS4509": 2,
+          "GS2158": 2,
+          "GS4536": 2
+        }
+      },
+      {
+        "id": "進階必修",
+        "min_courses": 2,
+        "courses": {
+          "GS4511": 1,
+          "GS4512": 2
+        }
+      }
+    ]
+  },
+  "MICRO:DEI 多元共融": {
+    "name": "DEI 多元共融微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0013.pdf",
+    "min_credits": 9,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "SL5015": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "BA5063": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "BA7136": 3,
+          "SL5013": 3,
+          "BA5070": 3
+        }
+      }
+    ]
+  },
+  "MICRO:電影研究與實務": {
+    "name": "電影研究與實務微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0003.pdf",
+    "min_credits": 9,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "IL1003": 3,
+          "IL2401": 3,
+          "IL2402": 3,
+          "IL2403": 3,
+          "CL2068": 3,
+          "FR2052": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "IL4401": 3,
+          "IL4402": 3,
+          "IL4404": 3,
+          "IL4405": 3,
+          "IL4409": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "IL4406": 3,
+          "IL4407": 3,
+          "IL4410": 3,
+          "IL4411": 3
+        }
+      }
+    ]
+  },
+  "MICRO:科技.藝術與社會": {
+    "name": "科技、藝術與社會微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0004.pdf",
+    "min_credits": 9,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "HI1901": 3,
+          "AR1001": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "AR2002": 3,
+          "HI4904": 3,
+          "IL2202": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "PD4101": 3,
+          "HI4909": 3,
+          "AR4007": 3
+        }
+      }
+    ]
+  },
+  "MICRO:藝術與視覺文化": {
+    "name": "藝術與視覺文化微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0005.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "AR1001": 3,
+          "AR4002": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "AR4001": 3,
+          "AR0035": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "AR0028": 3,
+          "AR4011": 3,
+          "GS2240": 2
+        }
+      }
+    ]
+  },
+  "MICRO:永續淨零科技": {
+    "name": "永續淨零科技微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0008.pdf",
+    "min_credits": 12,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "EG5011": 3
+        }
+      },
+      {
+        "id": "核心課程（同一主題至少兩門；需人工確認同主題）",
+        "min_courses": 2,
+        "courses": {
+          "EI1102": 3,
+          "ME2073-B": 3,
+          "CH8123": 3,
+          "MS5049": 3,
+          "EE3014": 3,
+          "CI2005-A": 3,
+          "CI2005-B": 3,
+          "CI3036-B": 2,
+          "CI3036-C": 2,
+          "CI3069": 3,
+          "CH4038": 3,
+          "EG1003-A": 3,
+          "CH3011": 3,
+          "CH3043": 3,
+          "MS5019": 3,
+          "CH4012": 3,
+          "MS5012": 3,
+          "ER6017": 3,
+          "CI3040": 3,
+          "CI5031": 3,
+          "CI3010-A": 3,
+          "CI3010-B": 3,
+          "ME2035": 3,
+          "ME2013": 3,
+          "ME5204": 3,
+          "IA7048": 3,
+          "ME3081": 3,
+          "CC0327": 2,
+          "ME3072": 3
+        },
+        "equiv": [
+          [
+            "CI2005-A",
+            "CI2005-B"
+          ],
+          [
+            "CI3036-B",
+            "CI3036-C"
+          ],
+          [
+            "CI3010-A",
+            "CI3010-B"
+          ]
+        ]
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 2,
+        "courses": {
+          "EG3001": 1,
+          "EG3002": 1,
+          "EG3003": 1,
+          "EG3004": 3
+        }
+      }
+    ],
+    "notes": [
+      "核心課程需從同一主題選修至少兩門；目前可核對課號與門數，但同主題組合仍請依官方辦法確認。"
+    ]
+  },
+  "MICRO:人工智慧工程應用": {
+    "name": "人工智慧工程應用微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0012.pdf",
+    "min_credits": 9,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CI7116": 3,
+          "ME4301": 3,
+          "ME3099": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "CH4012": 3,
+          "CI7123": 3,
+          "ME5302": 3
+        }
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "ME5301": 3,
+          "EG5011": 3
+        }
+      }
+    ]
+  },
+  "MICRO:認識永續水資源": {
+    "name": "認識永續水資源微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0009.pdf",
+    "min_credits": 9,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GP2019": 3,
+          "GP2020": 3
+        },
+        "equiv": [
+          [
+            "GP2019",
+            "GP2020"
+          ]
+        ]
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "GP3011": 3,
+          "GP3012": 3,
+          "AG7066": 3
+        },
+        "equiv": [
+          [
+            "GP3011",
+            "GP3012"
+          ]
+        ]
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "AG7064": 3,
+          "HS6151": 3
+        }
+      }
+    ]
+  },
+  "MICRO:測地與遙測": {
+    "name": "測地與遙測微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0010.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "GP2004": 2,
+          "GP1017": 2
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "GP3063": 3,
+          "RS7032": 3
+        }
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "RS5012": 3,
+          "RS5020": 3
+        }
+      }
+    ]
+  },
+  "MICRO:地表地球化學循環": {
+    "name": "地表地球化學循環微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0011.pdf",
+    "min_credits": 9,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "化學基礎必選",
+        "min_courses": 1,
+        "courses": {
+          "CM1009": 3,
+          "CM1001": 3,
+          "EG1003": 3,
+          "EG1007": 3
+        },
+        "equiv": [
+          [
+            "CM1009",
+            "CM1001",
+            "EG1003",
+            "EG1007"
+          ]
+        ]
+      },
+      {
+        "id": "地質基礎二選一",
+        "min_courses": 1,
+        "courses": {
+          "GP2032": 2,
+          "GP3039": 2
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "min_credits": 4,
+        "courses": {
+          "CM1010": 3,
+          "CM1002": 3,
+          "GP2067": 2,
+          "GP5037": 2
+        },
+        "equiv": [
+          [
+            "CM1010",
+            "CM1002"
+          ]
+        ]
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "GP5026": 2
+        }
+      }
+    ]
+  },
+  "MICRO:高資產與永續財富管理": {
+    "name": "高資產與永續財富管理微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0015.pdf",
+    "min_credits": 10,
+    "min_courses": 4,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "FM3017": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "FM2009": 3,
+          "BM1010": 3,
+          "FM5007": 3,
+          "FM3048": 2,
+          "GS4413": 2
+        }
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "FM3040": 3
+        }
+      }
+    ]
+  },
+  "MICRO:氫能診斷技術": {
+    "name": "氫能診斷技術微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0016.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "ER6017": 3,
+          "SG5009": 3,
+          "ME2073": 3,
+          "EE8095": 3,
+          "ER6011": 3,
+          "SA5016": 3
+        },
+        "equiv": [
+          [
+            "ER6017",
+            "SG5009"
+          ],
+          [
+            "EE8095",
+            "ER6011",
+            "SA5016"
+          ]
+        ]
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "ER5052": 3,
+          "SA5038": 3
+        }
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "ER5050": 3,
+          "ER5023": 3,
+          "ME4101": 1,
+          "ME4103": 1,
+          "ME3011": 1,
+          "ME3012": 1,
+          "ME4075": 3,
+          "EE4004": 3,
+          "EE4023": 3
+        }
+      }
+    ]
+  },
+  "MICRO:電解產氫": {
+    "name": "電解產氫微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0017.pdf",
+    "min_credits": 8,
+    "min_courses": 3,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CC0327": 2,
+          "ME2073": 3,
+          "MS5021": 3,
+          "SD5010": 3,
+          "CH3059": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "ER6017": 3,
+          "SG5009": 3,
+          "MS5012": 3,
+          "SD5007": 3
+        },
+        "equiv": [
+          [
+            "ER6017",
+            "SG5009"
+          ],
+          [
+            "MS5012",
+            "SD5007"
+          ]
+        ]
+      },
+      {
+        "id": "實作課程",
+        "min_courses": 1,
+        "courses": {
+          "ER5050": 3,
+          "ER5023": 3,
+          "ME4101": 1,
+          "ME4103": 1,
+          "ME3011": 1,
+          "ME3012": 1,
+          "ME4075": 3,
+          "CH3063": 1
+        }
+      }
+    ]
+  },
+  "MICRO:智慧通訊技術": {
+    "name": "智慧通訊技術微學程",
+    "kind": "微學程",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/316/0018.pdf",
+    "min_credits": 11,
+    "min_courses": 4,
+    "groups": [
+      {
+        "id": "必修基礎",
+        "min_courses": 1,
+        "courses": {
+          "CC0326": 2
+        }
+      },
+      {
+        "id": "其他基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CO1007": 3,
+          "EE1009": 3,
+          "CE2005": 3,
+          "CO3003": 3,
+          "EE4020": 3,
+          "CE2006": 3,
+          "CO3004": 3,
+          "EE3009": 3
+        },
+        "equiv": [
+          [
+            "CO1007",
+            "EE1009"
+          ],
+          [
+            "CO3003",
+            "EE4020"
+          ]
+        ]
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "CO3006": 3,
+          "EE3046": 3,
+          "CE2012": 3,
+          "CO3029": 3,
+          "CO3026": 3
+        }
+      },
+      {
+        "id": "進階課程",
+        "min_courses": 1,
+        "courses": {
+          "CO3027": 3,
+          "CO6062": 3,
+          "CO6063": 3,
+          "CE6020": 3
+        }
+      }
+    ]
+  },
+  "EX:金融數學": {
+    "name": "金融數學",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/2.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎必修",
+        "min_courses": 1,
+        "courses": {
+          "MA2021": 3
+        }
+      },
+      {
+        "id": "基礎選修",
+        "min_courses": 1,
+        "courses": {
+          "MA2011": 3,
+          "MA3025": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "MA3121": 3,
+          "FM3002": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "MA3123": 3
+        }
+      }
+    ]
+  },
+  "EX:計算數學": {
+    "name": "計算數學",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/3.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "MA1018": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 3,
+        "courses": {
+          "MA2030": 3,
+          "MA2044": 3,
+          "MA2063": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "MA3103": 3
+        }
+      }
+    ]
+  },
+  "EX:代數學": {
+    "name": "代數學",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/54.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MA2007": 3,
+          "MA2008": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "MA2025": 3,
+          "MA2026": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "MA3036": 3,
+          "MA3099": 3
+        }
+      }
+    ]
+  },
+  "EX:數學分析": {
+    "name": "數學分析",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/55.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 12,
+    "min_courses": 4,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "MA1015": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "MA2045": 4,
+          "MA2046": 4,
+          "MA2049": 3,
+          "MA2050": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "MA3015": 3,
+          "MA3003": 3
+        }
+      }
+    ]
+  },
+  "EX:天文物理": {
+    "name": "天文物理",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/4.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 16,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎必修",
+        "min_courses": 3,
+        "courses": {
+          "PH1027": 4,
+          "PH2003": 3,
+          "PH3009": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "PH3045": 3,
+          "PH3054": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "PH3066": 3
+        }
+      }
+    ]
+  },
+  "EX:凝態物理": {
+    "name": "凝態物理",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/5.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 16,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎必修",
+        "min_courses": 3,
+        "courses": {
+          "PH1028": 4,
+          "PH2003": 3,
+          "PH3009": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "PH2035": 3,
+          "PH3011": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "PH3042": 3
+        }
+      }
+    ]
+  },
+  "EX:永續環境化學": {
+    "name": "永續環境化學",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/6.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 13,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CM1009": 3,
+          "CM1010": 3,
+          "CM1001": 3,
+          "CM1002": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "CM2021": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 3,
+        "min_credits": 7,
+        "courses": {
+          "CM4038": 3,
+          "CM6025": 4,
+          "CM6028": 2,
+          "CM6029": 2,
+          "CM6060": 3
+        }
+      }
+    ]
+  },
+  "EX:尖端材料化學": {
+    "name": "尖端材料化學",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/7.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "CM1009": 3,
+          "CM1010": 3,
+          "CM1001": 3,
+          "CM1002": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 1,
+        "courses": {
+          "CM2031": 4,
+          "CM3051": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 3,
+        "courses": {
+          "CM4037": 3,
+          "CM6060": 3,
+          "CM6062": 3,
+          "CM6068": 3
+        }
+      }
+    ]
+  },
+  "EX:光電系統": {
+    "name": "光電系統",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/29.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 16,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "OS2017": 3,
+          "OS2013": 4
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "OS2018": 3,
+          "OS3017": 3,
+          "OS6057": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "OS3001": 3,
+          "OS3002": 3
+        }
+      }
+    ]
+  },
+  "EX:人力資源管理": {
+    "name": "人力資源管理",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/38.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MT1021": 3,
+          "BA1003": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "BA2015": 3,
+          "BA3005": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "HR7003": 3,
+          "BA6020": 3
+        }
+      }
+    ]
+  },
+  "EX:工業管理": {
+    "name": "工業管理",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/39.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MT1021": 3,
+          "BA1003": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "MT2041": 3,
+          "MT2042": 3,
+          "BA3001": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "IA7041": 3,
+          "IA7044": 3
+        }
+      }
+    ]
+  },
+  "EX:投資與財務管理": {
+    "name": "投資與財務管理",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/40.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "FM3017": 3,
+          "FM2030": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "FM3036": 3,
+          "FM3001": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "FM3002": 3,
+          "FM4001": 3
+        }
+      }
+    ]
+  },
+  "EX:會計與金融評價": {
+    "name": "會計與金融評價",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/41.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MT1031": 3,
+          "MT1032": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "FM3002": 3,
+          "FM2030": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "AC6028": 3,
+          "FM2037": 3
+        }
+      }
+    ]
+  },
+  "EX:國際金融": {
+    "name": "國際金融",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/42.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MT1011": 3,
+          "MT1012": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "EC2005": 3,
+          "EC2006": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "EC3072": 3
+        }
+      }
+    ]
+  },
+  "EX:國際經貿": {
+    "name": "國際經貿",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/43.pdf",
+    "include_colleges": [
+      "管理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 2,
+        "courses": {
+          "MT1011": 3,
+          "MT1012": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 2,
+        "courses": {
+          "EC2003": 3,
+          "EC2004": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "EC3071": 3
+        }
+      }
+    ]
+  },
+  "EX:物聯網應用": {
+    "name": "物聯網應用",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/44.pdf",
+    "exclude_depts": [
+      "資訊管理學系"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "IM2038": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 3,
+        "courses": {
+          "IM2002": 3,
+          "IM3061": 3,
+          "IM3069": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "IM5032": 3
+        }
+      }
+    ]
+  },
+  "EX:電子商務": {
+    "name": "電子商務",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/45.pdf",
+    "exclude_depts": [
+      "資訊管理學系"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "MT1031": 3,
+          "MT2041": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 3,
+        "courses": {
+          "IM3031": 3,
+          "IM3059": 3,
+          "IM3058": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "IM6100": 3
+        }
+      }
+    ]
+  },
+  "EX:光電設計": {
+    "name": "光電設計",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/30.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 15,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "OS2017": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 3,
+        "courses": {
+          "OS2018": 3,
+          "OS3017": 3,
+          "OS7163": 3,
+          "OS7173": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "OS3001": 3,
+          "OS7188": 3
+        }
+      }
+    ]
+  },
+  "EX:矽光子": {
+    "name": "矽光子",
+    "kind": "領域專長",
+    "source": "https://course.ncu.edu.tw/static/file/14/1014/img/315/31.pdf",
+    "include_colleges": [
+      "理學院"
+    ],
+    "min_credits": 14,
+    "min_courses": 5,
+    "groups": [
+      {
+        "id": "基礎課程",
+        "min_courses": 1,
+        "courses": {
+          "OS2001": 3,
+          "OS2011": 3
+        }
+      },
+      {
+        "id": "核心課程",
+        "min_courses": 3,
+        "courses": {
+          "OS3017": 3,
+          "OS6072": 3,
+          "OS7086": 2,
+          "OS7097": 3
+        }
+      },
+      {
+        "id": "總整課程",
+        "min_courses": 1,
+        "courses": {
+          "OS3002": 3
+        }
+      }
+    ]
+  }
+}
