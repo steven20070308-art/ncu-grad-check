@@ -91,7 +91,7 @@
     const cat = {};
     Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
       .forEach((c) => c.codes.forEach((code) => (cat[code] = { name: c.name, credits: c.credits })));
-    Object.values(programs).forEach((p) => p.groups.forEach((g) =>
+    Object.values(programs).forEach((p) => (p.groups || []).forEach((g) =>
       Object.entries(g.courses).forEach(([code, cr]) => { if (!cat[code]) cat[code] = { credits: cr, name: (p.names || {})[code] }; })));
     return cat;
   }
@@ -102,7 +102,7 @@
   function checkProgram(program, transcript, project, deptRules) {
     const records = transcript.filter((r) => passed(r, project));
     const counted = new Set();
-    const groups = program.groups.map((g) => {
+    const groups = (program.groups || []).map((g) => {
       let hits = records.filter((r) => r.code in g.courses && !counted.has(r.code));
       for (const eq of g.equiv || []) {
         const inEq = hits.filter((r) => eq.includes(r.code));
@@ -124,8 +124,11 @@
     const internCredits = Math.min(intern.reduce((s, r) => s + r.credits, 0), program.internship_max_credits ?? 0);
     const credits = groups.reduce((s, g) => s + g.got_credits, 0) + internCredits;
     const college = deptRules?.college;
+    const dept = deptRules?.dept;
     const eligible = !(program.exclude_colleges || []).includes(college)
-      && (!program.include_colleges || program.include_colleges.includes(college));
+      && (!program.include_colleges || program.include_colleges.includes(college))
+      && !(program.exclude_depts || []).includes(dept)
+      && (!program.include_depts || program.include_depts.includes(dept));
     // manual：PDF 沒有列課號，無法自動判斷是否修畢
     const courses = groups.reduce((s, g) => s + g.got, 0);
     return { name: program.name, groups, credits, need: program.min_credits, eligible, manual: !!program.manual,
@@ -383,14 +386,14 @@
     const taken = new Set(transcript.filter((r) => passed(r, true)).map((r) => r.code));
     const rep = check(rules, transcript, programs, true, selected);
     const programCore = new Set(), programAll = new Set();
-    Object.values(programs).forEach((p) => p.groups.forEach((g) => Object.keys(g.courses).forEach((k) => {
+    Object.values(programs).forEach((p) => (p.groups || []).forEach((g) => Object.keys(g.courses).forEach((k) => {
       programAll.add(k); if (g.id !== "選修") programCore.add(k);
     })));
     // 大學部可修：課號千位數 1-5，或 7 開頭但列在「有勾選的學程」或本系規則引用的學程課表內（碩博同修）
     const relevant = new Set(selected.concat((rules.elective_rules || []).flatMap((e) => e.programs || [])));
     const programMine = new Set();
     Object.entries(programs).filter(([k]) => relevant.has(k))
-      .forEach(([, p]) => p.groups.forEach((g) => Object.keys(g.courses).forEach((c) => programMine.add(c))));
+      .forEach(([, p]) => (p.groups || []).forEach((g) => Object.keys(g.courses).forEach((c) => programMine.add(c))));
     const known = new Set(Object.values(rules.required_courses).flat().concat((rules.choose_groups || []).flatMap((g) => g.courses))
       .flatMap((c) => c.codes));
     const stars = new Set(opts.favorites || []);  // 使用者加星號、想優先修的課
@@ -449,7 +452,7 @@
     selected.forEach((k, i) => {
       const pr = rep.programs[k];
       if (!pr || pr.done || !pr.eligible || pr.manual) return;
-      const codes = new Set(programs[k].groups.flatMap((g) => Object.keys(g.courses)));
+      const codes = new Set((programs[k].groups || []).flatMap((g) => Object.keys(g.courses)));
       openNow.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([50 + i, o, `${pr.name}尚缺`]));
     });
     // 自選：全民國防教育（一學期排一門，勾選了就排在通識、體育之前，免得時段被佔走）與加星號的課。不補任何缺口，所以不做缺口檢查
