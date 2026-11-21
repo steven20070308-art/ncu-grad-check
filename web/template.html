@@ -73,6 +73,10 @@ label.application-time[hidden] { display: none; }
 .notice { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); margin: 0; }
 .notice.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); }
 .notice.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.parse-problems { margin-top: 6px; }
+.parse-problems ol { margin: 5px 0 0; padding-left: 22px; }
+.parse-problems li + li { margin-top: 4px; }
+.parse-problems code { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); }
 
 /* 總覽 */
 .summary { display: grid; gap: 12px; }
@@ -109,6 +113,15 @@ label.application-time[hidden] { display: none; }
 .chip { font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; background: var(--paper); }
 .chip .mono { color: var(--accent); font-size: 12px; margin-left: 4px; }
 .chip.have { border-color: var(--ok); }
+.chip.waived { border-style: dashed; border-color: var(--warn); }
+.exemption-box { margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); display: grid; gap: 8px; }
+.exemption-box h4 { margin: 0; font-size: 14px; }
+.exemption-form { display: grid; gap: 6px; }
+.exemption-form select { width: 100%; }
+.exemption-list { display: grid; gap: 5px; }
+.exemption-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 6px; font-size: 12.5px; }
+.exemption-item.invalid { color: var(--bad); }
+.exemption-item button { padding: 3px 8px; min-height: 0; }
 details summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 details .chips { margin-top: 8px; }
 
@@ -172,6 +185,7 @@ footer a { color: var(--accent); }
         <button id="sample" type="button" class="ghost">載入範例</button>
       </div>
       <p class="notice" id="parse-msg" role="status"></p>
+      <div id="parse-problems"></div>
       <p class="hint">成績只在你的瀏覽器裡計算，不會上傳。按「問 AI」時只會送出檢核摘要，不含原始成績。</p>
     </section>
 
@@ -205,10 +219,10 @@ footer a { color: var(--accent); }
         <h2 id="plan-title">排課建議</h2>
         <p class="hint" id="plan-src"></p>
         <div class="row">
-          <label for="plan-year" style="display:flex;gap:6px;align-items:center">下學期是
-            <select id="plan-year" style="width:auto"><option value="1">大一</option><option value="2">大二</option><option value="3">大三</option><option value="4">大四</option></select></label>
+          <label for="plan-term" style="display:flex;gap:6px;align-items:center">排課學期
+            <select id="plan-term" style="width:auto"><option value="1-1">大一上</option><option value="1-2">大一下</option><option value="2-1">大二上</option><option value="2-2">大二下</option><option value="3-1">大三上</option><option value="3-2">大三下</option><option value="4-1">大四上</option><option value="4-2">大四下</option></select></label>
           <label for="plan-max" style="display:flex;gap:6px;align-items:center">學分上限
-            <select id="plan-max" style="width:auto"></select></label>
+            <input id="plan-max" type="number" min="1" step="1" value="21" inputmode="numeric" style="width:90px" aria-label="每學期排課學分上限"></label>
           <label class="check" for="plan-mn"><input type="checkbox" id="plan-mn">加排全民國防教育（軍訓）</label>
           <button id="plan-run" type="button">產生排課建議</button>
         </div>
@@ -322,7 +336,12 @@ let OFFERINGS_LABEL = "";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-let state = { dept: null, records: [], rep: null, report: null, activePrograms: null };
+let SAVED_EXEMPTIONS = [];
+try {
+  const saved = JSON.parse(localStorage.getItem("gc-exemptions") || "[]");
+  SAVED_EXEMPTIONS = Array.isArray(saved) ? saved.filter((x) => x && typeof x === "object") : [];
+} catch (e) { SAVED_EXEMPTIONS = []; }
+let state = { dept: null, records: [], rep: null, report: null, activePrograms: null, exemptions: SAVED_EXEMPTIONS };
 
 function programsForApplicationTerm() {
   const programs = { ...state.dept.programs };
@@ -335,6 +354,60 @@ function programsForApplicationTerm() {
     if (version) programs[key] = { ...program, groups: version.groups };
   });
   return programs;
+}
+
+function exemptionPolicy(program) {
+  if (program.exemption_policy) return program.exemption_policy;
+  if (program.kind === "微學程" && !program.manual) return {
+    groups: (program.groups || []).map((g) => g.id),
+    max_credits: (program.min_credits || 0) / 2,
+    note: "依微學程規定，已通過的相近課程可提出抵免申請；實際上限由設置單位訂定，且不超過微學程總學分的一半。"
+  };
+  return null;
+}
+
+function saveExemptions() {
+  try { localStorage.setItem("gc-exemptions", JSON.stringify(state.exemptions)); } catch (e) { /* 無法儲存就算了 */ }
+}
+
+function courseLabel(code, program) {
+  return `${program.names?.[code] || state.dept.catalog[code]?.name || code} ${code}`;
+}
+
+function exemptionEditor(programKey, program, report) {
+  const policy = exemptionPolicy(program);
+  if (!policy || program.manual) return "";
+  const eligible = program.kind === "微學程" || report.eligible;
+  const existing = state.exemptions.filter((e) => e.program_key === programKey);
+  const accepted = report.exemptions || [];
+  const usedCredits = accepted.reduce((s, e) => s + e.credits, 0);
+  const passed = new Map();
+  state.records.filter((r) => G.passed(r, false)).forEach((r) => { if (!passed.has(r.code)) passed.set(r.code, r); });
+  const directCodes = new Set(state.records.filter((r) => G.passed(r, $("project").checked)).map((r) => r.code));
+  const targets = (program.groups || []).filter((g) => (policy.groups || []).includes(g.id)).flatMap((g) =>
+    Object.entries(g.courses).map(([code, credits]) => ({ code, credits, group: g.id })))
+    .filter((x) => !directCodes.has(x.code) && !existing.some((e) => e.target_code === x.code)
+      && (policy.max_credits == null || usedCredits + x.credits <= policy.max_credits));
+  const sources = [...passed.values()].filter((r) => !existing.some((e) => e.source_code === r.code));
+  const sourceName = (e) => passed.get(e.source_code)?.name || state.dept.catalog[e.source_code]?.name || e.source_code;
+  const list = existing.length ? `<div class="exemption-list">${existing.map((e) => {
+    const isAccepted = accepted.some((a) => a.target_code === e.target_code && a.source_code === e.source_code);
+    const status = isAccepted ? "納入抵免試算，待校方審核" : "目前未納入試算，請檢查既修課程與抵免上限";
+    return `<div class="exemption-item${isAccepted ? "" : " invalid"}"><span>${esc(sourceName(e))} ${esc(e.source_code)} → ${esc(courseLabel(e.target_code, program))}（${isAccepted ? accepted.find((a) => a.target_code === e.target_code && a.source_code === e.source_code).credits : program.groups.find((g) => e.target_code in g.courses)?.courses[e.target_code] || 0} 學分）<br><span class="hint">${esc(status)}</span></span><button type="button" class="ghost" data-exemption-remove="${esc(programKey)}" data-source-code="${esc(e.source_code)}" data-target-code="${esc(e.target_code)}">移除</button></div>`;
+  }).join("")}</div>` : "";
+  const canAdd = eligible && sources.length && targets.length;
+  const maxText = policy.max_credits == null ? "" : `；試算上限 ${policy.max_credits} 學分，目前納入 ${usedCredits} 學分`;
+  return `<div class="exemption-box">
+    <h4>相近課程抵免試算（不會送出申請）</h4>
+    <p class="hint">${esc(policy.note || "抵免仍須依官方申請程序審查")}${esc(maxText)}。來源課程須已及格；試算不會增加畢業總學分。</p>
+    ${!eligible ? `<p class="notice bad">此科系不符合「${esc(program.name)}」的修讀資格。</p>` : ""}
+    ${list}
+    ${sources.length ? `<div class="exemption-form">
+      <label>已及格的相近課程<select data-exemption-source="${esc(programKey)}">${sources.map((r) => `<option value="${esc(r.code)}">${esc(r.name || r.code)} ${esc(r.code)}（${r.credits} 學分）</option>`).join("")}</select></label>
+      <label>申請抵免的正式課程<select data-exemption-target="${esc(programKey)}">${targets.map((t) => `<option value="${esc(t.code)}">${esc(courseLabel(t.code, program))}（${t.credits} 學分，${esc(t.group)}）</option>`).join("")}</select></label>
+      <button type="button" class="ghost" data-exemption-add="${esc(programKey)}"${canAdd ? "" : " disabled"}>加入抵免試算</button>
+    </div>` : `<p class="hint">${state.records.length ? "目前沒有可用的已及格來源課程或可申請抵免的正式課程。" : "先貼上成績單，才能選擇已及格的相近課程。"}</p>`}
+  </div>`;
 }
 
 function deptOf(id) {
@@ -442,6 +515,57 @@ function reqRow(name, got, need, unit, note) {
     ${note ? `<span class="note">${esc(note)}</span>` : ""}</div>`;
 }
 
+function confirmationItems() {
+  const { rep, dept, activePrograms, exemptions } = state;
+  const items = [...(rep.notes || [])];
+  const selected = selectedPrograms().filter((key) => activePrograms?.[key]);
+  const selectedTracks = selected.filter((key) => !key.startsWith("EX:") && !key.startsWith("MICRO:"));
+  const questions = dept.questions || [];
+
+  if (selectedTracks.length) {
+    const electiveQuestion = questions.find((q) => q.includes("系選修"));
+    const deadlineQuestion = questions.find((q) => q.includes("最後一學期"));
+    if (electiveQuestion) items.push(electiveQuestion);
+    if (deadlineQuestion) items.push(deadlineQuestion);
+  }
+  if (selectedTracks.length > 1) {
+    const occurrences = new Map();
+    selectedTracks.forEach((key) => {
+      const program = activePrograms[key];
+      (program.groups || []).forEach((group) => Object.keys(group.courses || {}).forEach((code) => {
+        if (!occurrences.has(code)) occurrences.set(code, new Set());
+        occurrences.get(code).add(key);
+      }));
+    });
+    const overlaps = [...occurrences].filter(([, keys]) => keys.size > 1).map(([code]) => code);
+    if (overlaps.length) items.push(`所選學分學程有重複課程（${overlaps.join("、")}）；請向學程辦公室確認能否重複認列。`);
+  }
+
+  const needsConfirmation = /確認|審查|申請|系辦|學程辦公室|通識中心|未計算|無法自動|尚未|未清楚|未列課號|需自行|須自行|需向|須向|請依官方/;
+  selected.forEach((key) => {
+    const program = activePrograms[key];
+    const report = rep.programs[key];
+    if (program.manual) items.push(`${program.name}的課程規則尚未整理，請查閱官方辦法並向學程辦公室確認。`);
+    (program.notes || []).filter((note) => needsConfirmation.test(note))
+      .forEach((note) => items.push(`${program.name}：${note}`));
+
+    const policy = exemptionPolicy(program);
+    if (policy?.note) items.push(`${program.name}抵免規定：${policy.note}`);
+    const chosenExemptions = exemptions.filter((e) => e.program_key === key);
+    chosenExemptions.forEach((e) => {
+      const accepted = (report?.exemptions || []).some((a) => a.source_code === e.source_code && a.target_code === e.target_code);
+      const sourceName = state.dept.catalog[e.source_code]?.name || e.source_code;
+      const targetName = program.names?.[e.target_code] || state.dept.catalog[e.target_code]?.name || e.target_code;
+      items.push(accepted
+        ? `${program.name}抵免待審：${sourceName}（${e.source_code}）→ ${targetName}（${e.target_code}）；核准前不算正式完成，請依官方程序申請。`
+        : `${program.name}抵免選項未納入試算：${sourceName}（${e.source_code}）→ ${targetName}（${e.target_code}）；請檢查及格狀態、抵免範圍與學分上限。`);
+    });
+  });
+
+  if (rep.failed.length) items.push(`未通過、不計學分的課：${rep.failed.map((r) => r.code).join("、")}`);
+  return [...new Set(items)];
+}
+
 function render() {
   const { rep, dept } = state;
   const t = rep.total;
@@ -501,7 +625,7 @@ function render() {
     : `<p class="notice">必修都修完了。</p>`;
 
   const names = Object.assign({}, ...Object.values(state.dept.programs).map((p) => p.names || {}));
-  const chip = (c, have) => `<span class="chip${have ? " have" : ""}">${names[c] ? esc(names[c]) : ""}<span class="mono">${esc(c)}</span></span>`;
+  const chip = (c, have, exempted = false) => `<span class="chip${have ? " have" : ""}">${names[c] ? esc(names[c]) : ""}<span class="mono">${esc(c)}</span>${exempted ? `<span class="pill ask">抵免試算</span>` : ""}</span>`;
   const progList = Object.entries(rep.programs);
   $("prog-hint").textContent = progList.length
     ? "學分學程、微學程與領域專長會分別檢核；進度不影響畢業判定。選修辦法未整理的領域專長會標示待補規則。"
@@ -511,26 +635,33 @@ function render() {
     return `<div>
     <h3>${esc(def.kind || "學分學程")}：${esc(p.name)}</h3>
     ${def.source ? `<p class="hint">官方規定：<a href="${esc(def.source)}" target="_blank" rel="noopener">查看修課辦法</a></p>` : ""}
-    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不適用「${esc(p.name)}」${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
+    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不符合「${esc(p.name)}」的修讀資格${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
     ${p.manual ? `<p class="notice warn">${def.kind === "領域專長" ? "此領域專長的課程規定尚未整理，暫無法自動檢核進度。" : "此模組辦法未提供可供程式核對的課號，暫無法自動檢核進度。"} <a href="${esc(def.source || "#")}" target="_blank" rel="noopener">查看官方規定</a></p>` : ""}
     <div class="reqs">${p.manual ? "" : reqRow(p.name, p.credits, p.need, " 學分")}
     ${p.need_courses ? reqRow("總門數", p.courses, p.need_courses, " 門") : ""}
     ${p.groups.filter((g) => g.need || g.need_credits || g.need_categories).map((g) => (g.need_categories ? reqRow(g.id + "：涵蓋類別", g.got_categories, g.need_categories, " 類") : "")
       + (g.need && !g.need_categories ? reqRow(g.id, g.got, g.need, " 門") : "") + (g.need_credits ? reqRow(g.id, g.got_credits, g.need_credits, " 學分") : "")).join("")}</div>
     ${p.groups.map((g) => `<details><summary>${esc(g.id)}可選課程（${g.options.length}）</summary>
-      <div class="chips">${g.options.map((c) => chip(c, g.courses.includes(c))).join("")}</div></details>`).join("")}
+      <div class="chips">${g.options.map((c) => chip(c, g.courses.includes(c), g.exempted_courses.includes(c))).join("")}</div></details>`).join("")}
+    ${p.exemptions.length ? `<p class="notice warn">抵免列入學程試算，尚待審核；未核准前不能視為正式完成，也不計入畢業總學分。</p>` : ""}
+    ${exemptionEditor(k, def, p)}
     ${(def.notes || []).length ? `<ul class="notes">${def.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
   </div>`;
   }).join("");
 
-  $("notes").innerHTML = [...rep.notes, ...dept.questions].map((n) => `<li>${esc(n)}</li>`).join("")
-    + (rep.failed.length ? `<li>未通過、不計學分的課：${rep.failed.map((r) => esc(r.code)).join("、")}</li>` : "");
+  const confirmations = confirmationItems();
+  $("notes").innerHTML = confirmations.length
+    ? confirmations.map((n) => `<li>${esc(n)}</li>`).join("")
+    : `<li>依目前科系與勾選項目，沒有需要另外確認的事項。</li>`;
 }
 
 function run() {
   const text = $("paste").value;
   const msg = $("parse-msg");
   const parsed = G.parse(text, state.dept.catalog);
+  $("parse-problems").innerHTML = parsed.problems.length
+    ? `<div class="notice warn parse-problems"><b>看不懂的內容：</b><ol>${parsed.problems.map((p) => `<li><code>${esc(p)}</code></li>`).join("")}</ol></div>`
+    : "";
   if (!parsed.records.length) {
     msg.className = "notice bad";
     msg.textContent = text.trim() ? "讀不到任何課程。請確認貼上的是成績表格，或改用「課號 成績」一行一門。" : "請先貼上已修課程。";
@@ -538,7 +669,7 @@ function run() {
   }
   state.records = parsed.records;
   state.activePrograms = programsForApplicationTerm();
-  state.rep = G.check(state.dept.rules, parsed.records, state.activePrograms, $("project").checked, selectedPrograms());
+  state.rep = G.check(state.dept.rules, parsed.records, state.activePrograms, $("project").checked, selectedPrograms(), state.exemptions);
   state.report = { main: G.slimReport(state.rep) };
   const parts = [`讀到 ${parsed.records.length} 門課（${parsed.mode}）`];
   if (parsed.problems.length) parts.push(`${parsed.problems.length} 行看不懂已略過`);
@@ -546,7 +677,7 @@ function run() {
   msg.className = parsed.problems.length || parsed.guessed.length ? "notice warn" : "notice";
   msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
   render();
-  $("plan-year").value = String(G.guessNextYear(state.records));
+  $("plan-term").value = G.guessNextTerm(state.records);
   if (OFFERINGS.length) plan();
   $("sim-out").innerHTML = "";
   $("ai-answer").textContent = "";
@@ -561,8 +692,8 @@ function simulate() {
     attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
   const unknown = codes.filter((c) => !state.dept.catalog[c]);
   const programs = programsForApplicationTerm();
-  const before = G.check(state.dept.rules, state.records, programs, true, selectedPrograms());
-  const after = G.check(state.dept.rules, state.records.concat(plan), programs, true, selectedPrograms());
+  const before = G.check(state.dept.rules, state.records, programs, true, selectedPrograms(), state.exemptions);
+  const after = G.check(state.dept.rules, state.records.concat(plan), programs, true, selectedPrograms(), state.exemptions);
   const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
   let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
   after.choose.forEach((g, i) => (rows += line(g.id, before.choose[i].got, g.got, `/ ${g.pick} 門`)));
@@ -638,20 +769,26 @@ function addStarFromInput() {
 function plan() {
   state.lastPlan = null;
   if (!state.records.length) return;
+  const [year, semester] = $("plan-term").value.split("-").map(Number);
+  const maxCredits = Number($("plan-max").value);
+  if (!year || !semester || !Number.isSafeInteger(maxCredits) || maxCredits < 1) {
+    $("plan-out").innerHTML = `<p class="notice bad">請輸入正整數學分上限。</p>`;
+    return;
+  }
   const r = G.planNextTerm(state.dept.rules, programsForApplicationTerm(), state.records, OFFERINGS,
-    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedPrograms(),
-      military: $("plan-mn").checked, favorites: STARS });
+    { maxCredits, year, semester, selected: selectedPrograms(),
+      military: $("plan-mn").checked, favorites: STARS, exemptions: state.exemptions });
   if (!r.chosen.length) {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
     return;
   }
-  state.lastPlan = { 共學分: r.credits, 排完後總學分: r.after.total.got, 畢業需: r.after.total.need,
+  state.lastPlan = { 學期: r.term, 共學分: r.credits, 排完後總學分: r.after.total.got, 畢業需: r.after.total.need,
     課程: r.chosen.map((c) => ({ 課號: c.code, 課名: c.name, 學分: c.credits, 理由: c.why, 時間: c.section.place })) };
   const skipped = r.candidates.filter((c) => c.skipped);
   $("plan-out").innerHTML = `<div>${timetable(r.chosen)}
-      <p class="hint">共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p>
+      <p class="hint">${r.term}建議共 ${r.credits} 學分。排完後預計總學分 ${r.before.total.got} → ${r.after.total.got}（畢業需 ${r.after.total.need}）。</p>
       ${r.credits < r.maxCredits ? `<p class="hint">還有 ${r.maxCredits - r.credits} 學分空間：目前的必修與選修缺口都排進去了，剩下可以自由選修有興趣的課。</p>` : ""}
-      ${r.later.length ? `<p class="hint">這學期也有開 ${r.later.map(esc).join("、")}，但應修科目表建議高年級再修，所以先不排。</p>` : ""}</div>
+      ${r.later.length ? `<p class="hint">這學期也有開 ${r.later.map(esc).join("、")}，但應修科目表建議之後再修，所以先不排。</p>` : ""}</div>
     <div><ul class="plan">${r.chosen.map((c) => `<li><span>${starBtn(c.code)}<b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
       <span class="mono">${c.credits} 學分</span>
       <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span></li>`).join("")}</ul>
@@ -781,20 +918,47 @@ initTracks();
 initExpertises();
 initMicroprograms();
 showSources();
+try {
+  const savedMax = Number(localStorage.getItem("gc-plan-max-credits"));
+  if (Number.isSafeInteger(savedMax) && savedMax >= 1) $("plan-max").value = String(savedMax);
+} catch (e) { /* 使用預設上限 */ }
 $("paste").value = SAMPLE;
 $("run").addEventListener("click", run);
 $("project").addEventListener("change", run);
 $("clear").addEventListener("click", () => { $("paste").value = ""; $("paste").focus(); });
 $("sample").addEventListener("click", () => { $("paste").value = SAMPLE; run(); });
 $("sim-run").addEventListener("click", simulate);
-$("plan-max").innerHTML = [12, 15, 18, 21, 24, 25].map((n) => `<option${n === 21 ? " selected" : ""}>${n}</option>`).join("");
 $("plan-run").addEventListener("click", plan);
 $("plan-mn").addEventListener("change", plan);
 $("star-add").addEventListener("click", addStarFromInput);
 $("star-input").addEventListener("keydown", (e) => { if (e.key === "Enter") addStarFromInput(); });
 document.addEventListener("click", (e) => { const b = e.target.closest("[data-star]"); if (b) toggleStar(b.dataset.star); });
-$("plan-year").addEventListener("change", plan);
-$("plan-max").addEventListener("change", plan);
+$("progs").addEventListener("click", (e) => {
+  const add = e.target.closest("[data-exemption-add]");
+  const remove = e.target.closest("[data-exemption-remove]");
+  if (add) {
+    const key = add.dataset.exemptionAdd;
+    const source = [...$("progs").querySelectorAll("[data-exemption-source]")].find((x) => x.dataset.exemptionSource === key)?.value;
+    const target = [...$("progs").querySelectorAll("[data-exemption-target]")].find((x) => x.dataset.exemptionTarget === key)?.value;
+    if (!source || !target || state.exemptions.some((x) => x.program_key === key && (x.source_code === source || x.target_code === target))) return;
+    state.exemptions.push({ program_key: key, source_code: source, target_code: target });
+    saveExemptions();
+    run();
+  } else if (remove) {
+    state.exemptions = state.exemptions.filter((x) => !(x.program_key === remove.dataset.exemptionRemove
+      && x.source_code === remove.dataset.sourceCode && x.target_code === remove.dataset.targetCode));
+    saveExemptions();
+    run();
+  }
+});
+$("plan-term").addEventListener("change", plan);
+$("plan-max").addEventListener("change", () => {
+  const value = Number($("plan-max").value);
+  if (Number.isSafeInteger(value) && value >= 1) {
+    try { localStorage.setItem("gc-plan-max-credits", String(value)); } catch (e) { /* 不影響本次排課 */ }
+  }
+  plan();
+});
 $("off-add").addEventListener("click", () => {
   const before = OFFERINGS.length;
   loadOfferings([$("off-paste").value], "內建資料＋你加入的資料");
