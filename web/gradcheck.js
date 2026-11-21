@@ -44,7 +44,7 @@
       const credits = a >= 0 ? parseInt(tokens[a + 2], 10) : NaN;
       const grade = a >= 0 ? tokens[a + 3] : undefined;
       if (a < 0 || !name || Number.isNaN(credits) || grade === undefined) {
-        problems.push(chunk.trim().slice(0, 80));
+        problems.push(chunk.trim());
         return;
       }
       records.push({ term, code, name, attr: tokens[a], credits, grade });
@@ -65,7 +65,7 @@
     text.split(/\n/).forEach((line) => {
       const m = line.trim().toUpperCase().match(/^((?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4}))\s*(\S+)?/);
       if (!line.trim()) return;
-      if (!m) { problems.push(line.trim().slice(0, 80)); return; }
+      if (!m) { problems.push(line.trim()); return; }
       const code = m[1];
       let grade = m[2] || "通過";
       if (/修課中|未到|進行中/.test(grade)) grade = "未到";
@@ -99,11 +99,44 @@
   // ---------- 規則引擎 ----------
   /* 檢核單一學分學程：各組最低門數/學分 + 總學分。
    * equiv：可互相替代的課號（例：BA3004 或 IM1018）只算一門；實習有認列上限。 */
-  function checkProgram(program, transcript, project, deptRules) {
+  function checkProgram(program, transcript, project, deptRules, exemptions = []) {
     const records = transcript.filter((r) => passed(r, project));
+    const policy = program.exemption_policy || (program.kind === "微學程"
+      ? { groups: (program.groups || []).map((g) => g.id), max_credits: (program.min_credits || 0) / 2 }
+      : null);
+    const college = deptRules?.college;
+    const dept = deptRules?.dept;
+    const eligibilityKeys = ["include_colleges", "exclude_colleges", "include_depts", "exclude_depts"];
+    const hasEligibilityRules = eligibilityKeys.some((key) => Array.isArray(program[key]) && program[key].length > 0);
+    const eligible = program.kind === "微學程" || !hasEligibilityRules || (!(program.exclude_colleges || []).includes(college)
+      && (!program.include_colleges || program.include_colleges.includes(college))
+      && !(program.exclude_depts || []).includes(dept)
+      && (!program.include_depts || program.include_depts.includes(dept)));
+    const countedProgramCodes = new Set((program.groups || []).flatMap((g) => Object.keys(g.courses)));
+    const directCodes = new Set(records.map((r) => r.code));
+    const usedSources = new Set(), usedTargets = new Set(directCodes);
+    const acceptedExemptions = [];
+    let exemptionCredits = 0;
+    if (policy && eligible) for (const exemption of exemptions) {
+      const source = transcript.find((r) => r.code === exemption.source_code && passed(r, false));
+      const group = (program.groups || []).find((g) => (policy.groups || []).includes(g.id)
+        && Object.prototype.hasOwnProperty.call(g.courses, exemption.target_code));
+      if (!source || !group || countedProgramCodes.has(source.code) || usedSources.has(source.code)
+        || usedTargets.has(exemption.target_code)) continue;
+      const credits = group.courses[exemption.target_code];
+      if (policy.max_credits != null && exemptionCredits + credits > policy.max_credits) continue;
+      usedSources.add(source.code);
+      usedTargets.add(exemption.target_code);
+      exemptionCredits += credits;
+      acceptedExemptions.push({ target_code: exemption.target_code, source_code: source.code,
+        source_name: source.name || source.code, group_id: group.id, credits });
+    }
     const counted = new Set();
     const groups = (program.groups || []).map((g) => {
       let hits = records.filter((r) => r.code in g.courses && !counted.has(r.code));
+      const waived = acceptedExemptions.filter((e) => e.group_id === g.id)
+        .map((e) => ({ code: e.target_code, credits: e.credits, exemption: e }));
+      hits = hits.concat(waived);
       for (const eq of g.equiv || []) {
         const inEq = hits.filter((r) => eq.includes(r.code));
         if (inEq.length > 1) hits = hits.filter((r) => !inEq.slice(1).includes(r));
@@ -118,21 +151,17 @@
       const okCats = !g.min_categories || cats >= g.min_categories;
       return { id: g.id, got: hits.length, need: g.min_courses || 0, got_credits: credits, need_credits: g.min_credits || null,
                got_categories: cats, need_categories: g.min_categories || null,
-               done: okCourses && okCredits && okCats, courses: hits.map((r) => r.code), options: Object.keys(g.courses) };
+               done: okCourses && okCredits && okCats, courses: hits.map((r) => r.code),
+               exempted_courses: hits.filter((r) => r.exemption).map((r) => r.code), options: Object.keys(g.courses) };
     });
     const intern = records.filter((r) => (program.internship_prefix || []).some((p) => r.code.startsWith(p)));
     const internCredits = Math.min(intern.reduce((s, r) => s + r.credits, 0), program.internship_max_credits ?? 0);
     const credits = groups.reduce((s, g) => s + g.got_credits, 0) + internCredits;
-    const college = deptRules?.college;
-    const dept = deptRules?.dept;
-    const eligible = !(program.exclude_colleges || []).includes(college)
-      && (!program.include_colleges || program.include_colleges.includes(college))
-      && !(program.exclude_depts || []).includes(dept)
-      && (!program.include_depts || program.include_depts.includes(dept));
     // manual：PDF 沒有列課號，無法自動判斷是否修畢
     const courses = groups.reduce((s, g) => s + g.got, 0);
     return { name: program.name, groups, credits, need: program.min_credits, eligible, manual: !!program.manual,
              courses, need_courses: program.min_courses || null,
+             exemptions: acceptedExemptions,
              done: !program.manual && credits >= program.min_credits && courses >= (program.min_courses || 0)
                && groups.every((g) => g.done) };
   }
@@ -144,7 +173,7 @@
   /* 規則引擎（各系共用）。認列順序：
    * 必修 → 擇N必修 → 國文/外文/通識 → 體育/服務學習 → 選修規則 → 其餘為自由選修。
    * used：已被必修、共同科目認列的課；electUsed：已被選修類「擇N」或獨占型選修規則認列的課。 */
-  function check(rules, transcript, programs, project, selected = []) {
+  function check(rules, transcript, programs, project, selected = [], exemptions = []) {
     const records = transcript.filter((r) => passed(r, project));
     const used = new Set(), electUsed = new Set();
     const rep = { required: {}, choose: [], buckets: [], counts: [], electives: [], caps: [] };
@@ -243,7 +272,8 @@
     rep.failed = transcript.filter((r) => !passed(r, project) && !IN_PROGRESS.includes(String(r.grade).trim()));
     // 只檢核使用者勾選的學分學程；學程不影響畢業判定
     rep.programs = Object.fromEntries(selected.filter((k) => programs[k])
-      .map((k) => [k, checkProgram(programs[k], transcript, project, rules)]));
+      .map((k) => [k, checkProgram(programs[k], transcript, project, rules,
+        exemptions.filter((e) => e.program_key === k))]));
     rep.notes = rules.warnings;
     rep.graduation = graduationStatus(rep);
     return rep;
@@ -292,9 +322,12 @@
       caps: rep.caps,
       free_elective_credits: rep.free_elective_credits,
       programs: Object.fromEntries(Object.entries(rep.programs).map(([k, v]) => [k, {
-        name: v.name, credits: v.credits, need: v.need, done: v.done,
+        name: v.name, credits: v.credits, need: v.need, done: v.done && !v.exemptions.length,
+        "抵免核准後預計完成": v.done,
         eligible: v.eligible, "無法自動檢核": v.manual,
-        groups: v.groups.map(({ id, got, need, got_credits, need_credits, courses }) => ({ id, got, need, got_credits, need_credits, courses })),
+        "抵免試算（尚待審核）": v.exemptions.map((e) => `${e.source_name} ${e.source_code} → ${e.target_code}（${e.credits} 學分）`),
+        groups: v.groups.map(({ id, got, need, got_credits, need_credits, courses, exempted_courses }) => ({
+          id, got, need, got_credits, need_credits, courses, "抵免試算課號": exempted_courses })),
         "必修必選可選課號": Object.fromEntries(v.groups.filter((g) => g.id !== "選修").map((g) => [g.id, g.options])) }])),
     };
   }
@@ -326,7 +359,8 @@
 5. 能不能畢業以 graduation 為準：總學分到了但還有未完成項目，就是還不能畢業，要列出未完成項目。
 6. total.got 含修課中的預計學分，要分開講「已取得」與「修課中」，不可說成已修得。
 7. 建議學程課程時，只能從報告的「必修必選可選課號」挑，並說明每組要修幾門。
-8. 報告若有「排課建議」，回答下學期怎麼修時以它為主，不要自己另外編課表；可以說明每門課補的是哪個缺口。`;
+8. 報告若有「排課建議」，回答下學期怎麼修時以它為主，不要自己另外編課表；可以說明每門課補的是哪個缺口。
+9. 「抵免試算（尚待審核）」只代表假設校方核准後的進度；未核准前不可說成已修畢。`;
 
   // ---------- 開課資料：課程查詢頁複製的文字 ----------
   const DAYS = "一二三四五六日";
@@ -384,7 +418,7 @@
     const maxCredits = opts.maxCredits ?? 21;
     const selected = opts.selected || [];
     const taken = new Set(transcript.filter((r) => passed(r, true)).map((r) => r.code));
-    const rep = check(rules, transcript, programs, true, selected);
+    const rep = check(rules, transcript, programs, true, selected, opts.exemptions || []);
     const programCore = new Set(), programAll = new Set();
     Object.values(programs).forEach((p) => (p.groups || []).forEach((g) => Object.keys(g.courses).forEach((k) => {
       programAll.add(k); if (g.id !== "選修") programCore.add(k);
@@ -403,7 +437,13 @@
     const peOk = (o) => o.code.startsWith("PE") && o.credits === 0 && !/隊|適應/.test(o.name) && !takenNames.has(norm(o.name))
       && (year === 1 ? o.code.startsWith("PE1") : o.code.startsWith("PE2"));
     const genOk = (o) => /^(GS|CC)/.test(o.code) && o.slots.length > 0 && !takenNames.has(norm(o.name));
-    const year = opts.year ?? 4;  // 下學期是大幾：只排建議學期不晚於這一年的必修
+    const year = opts.year ?? 4;
+    const semester = opts.semester ?? 2;
+    const termRank = (term) => {
+      const m = String(term || "").match(/^(\d)(上|下)$/);
+      return m ? (Number(m[1]) - 1) * 2 + (m[2] === "下" ? 1 : 0) : -1;
+    };
+    const selectedTermRank = (year - 1) * 2 + (semester - 1);
     const open = offerings.filter((o) => !o.canceled && (o.credits > 0 || peOk(o)) && !taken.has(o.code)
       && (levelOf(o.code) <= 5 || (levelOf(o.code) === 7 && programMine.has(o.code)))
       // 5 字頭但標「必修」又不在本系規則裡的，多半是碩士班必修（例：EC5006 口語表達），不推薦
@@ -411,14 +451,14 @@
     const reasons = [];
     const allTodo = Object.values(rep.required).flatMap((v) => v.todo);
     const todoCodes = new Set(allTodo.flatMap((c) => c.codes));
-    const tooEarly = new Set(allTodo.filter((c) => parseInt(c.term, 10) > year).flatMap((c) => c.codes));
+    const tooEarly = new Set(allTodo.filter((c) => termRank(c.term) > selectedTermRank).flatMap((c) => c.codes));
     open.filter((o) => todoCodes.has(o.code) && !tooEarly.has(o.code)).forEach((o) => reasons.push([1, o, "必修，尚未修"]));
     rep.choose.filter((g) => g.got < g.pick).forEach((g) => {
-      g.options.filter((c) => parseInt(c.term, 10) > year).forEach((c) => c.codes.forEach((x) => tooEarly.add(x)));
-      const codes = new Set(g.options.filter((c) => !(parseInt(c.term, 10) > year)).flatMap((c) => c.codes));
+      g.options.filter((c) => termRank(c.term) > selectedTermRank).forEach((c) => c.codes.forEach((x) => tooEarly.add(x)));
+      const codes = new Set(g.options.filter((c) => termRank(c.term) <= selectedTermRank).flatMap((c) => c.codes));
       open.filter((o) => codes.has(o.code)).forEach((o) => reasons.push([2, o, `${g.id}，還差 ${g.pick - g.got} 門`]));
     });
-    // 高年級才建議修的必修/擇N課，也不拿來充當選修
+    // 應修科目表建議在較後學期修的必修/擇N課，不拿來充當選修
     const laterCodes = [...new Set(open.filter((o) => tooEarly.has(o.code)).map((o) => o.code))];
     const openNow = open.filter((o) => !tooEarly.has(o.code));
     (rules.elective_rules || []).forEach((e, i) => {
@@ -503,7 +543,7 @@
       if (c.code.startsWith("PE") && chosen.some((x) => x.code.startsWith("PE"))) { c.skipped = "體育一學期只排一門"; continue; }
       if (chosen.some((x) => norm(x.name) === norm(c.name))) { c.skipped = "已經排了同名的課"; continue; }
       if (!c.starred && genOk(c.sections[0]) && chosen.filter((x) => genOk(x.section)).length >= 2) { c.skipped = "通識一學期最多排兩門（加星號的不受限）"; continue; }
-      const next = gapParts(check(rules, transcript.concat(chosen.map(asRecord), [asRecord(c)]), programs, true, selected));
+      const next = gapParts(check(rules, transcript.concat(chosen.map(asRecord), [asRecord(c)]), programs, true, selected, opts.exemptions || []));
       if (!c.force && !c.starred && total(next) >= total(current)) { c.skipped = "前面排的課已經滿足這項要求"; continue; }
       const sec = c.sections.find((s) => chosen.every((x) => !conflicts(x.section, s)));
       if (!sec) { c.skipped = "每個班別都和已排的課衝堂"; continue; }
@@ -515,17 +555,22 @@
       credits += c.credits;
       current = next;
     }
-    const after = check(rules, transcript.concat(chosen.map(asRecord)), programs, true, selected);
-    return { chosen, credits, candidates, before: rep, after, maxCredits, year, later: laterCodes };
+    const after = check(rules, transcript.concat(chosen.map(asRecord)), programs, true, selected, opts.exemptions || []);
+    return { chosen, credits, candidates, before: rep, after, maxCredits, year, semester,
+      term: `大${year}${semester === 1 ? "上" : "下"}`, later: laterCodes };
   }
 
-  // 依成績單上有幾個學期，推估下學期是大幾（每學年兩學期）
-  function guessNextYear(transcript) {
+  // 依成績單上的學期數，推估下一個規劃學期（每學年兩學期）
+  function guessNextTerm(transcript) {
     const terms = new Set(transcript.map((r) => r.term).filter((t) => /^\d+-[12]$/.test(t)));
-    return Math.min(4, Math.max(1, Math.ceil((terms.size + 1) / 2)));
+    const count = terms.size;
+    const year = Math.min(4, Math.floor(count / 2) + 1);
+    const semester = count < 8 ? count % 2 + 1 : 2;
+    return `${year}-${semester}`;
   }
 
-  const api = { guessNextYear, parseOfferings, planNextTerm, DAYS, PERIODS, passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
+  const api = { guessNextYear: (transcript) => Number(guessNextTerm(transcript).split("-")[0]), guessNextTerm,
+                parseOfferings, planNextTerm, DAYS, PERIODS, passed, parse, parseTable, parseManual, buildCatalog, check, checkProgram,
                 slimReport, audit, SYSTEM_PROMPT, IN_PROGRESS };
   if (typeof module !== "undefined") module.exports = api;
   else root.GradCheck = api;
