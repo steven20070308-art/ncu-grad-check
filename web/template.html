@@ -66,6 +66,8 @@ button.ghost { background: transparent; color: var(--accent); }
 button:disabled { opacity: .5; cursor: progress; }
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink); }
 .check input { margin-top: 4px; accent-color: var(--accent); }
+.application-time { margin: 2px 0 6px 24px; max-width: 300px; }
+label.application-time[hidden] { display: none; }
 .hint { font-size: 12.5px; color: var(--muted); margin: 0; }
 .hint code, .mono { font-family: var(--font-mono); }
 .notice { font-size: 13px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); margin: 0; }
@@ -138,7 +140,7 @@ footer a { color: var(--accent); }
 <div class="wrap">
   <header>
     <h1>中大畢業學分檢核</h1>
-    <span class="sub">貼上成績，逐項核對應修科目表與學分學程</span>
+    <span class="sub">貼上成績，逐項核對應修科目表與跨域學習進度</span>
   </header>
 
   <div class="layout">
@@ -157,6 +159,12 @@ footer a { color: var(--accent); }
       <h2><span class="n">3</span>有修學分學程嗎？（可複選，沒有就不用勾）</h2>
       <div id="tracks" style="display:grid;gap:6px"></div>
       <details><summary>學程收錄狀況</summary><p class="hint" id="tracks-todo"></p></details>
+      <h2><span class="n">4</span>有修領域專長嗎？（可複選，沒有就不用勾）</h2>
+      <div id="expertises" style="display:grid;gap:6px"></div>
+      <p class="hint">課程規定已整理的模組會自動檢核；尚未整理的項目會在進度區提示。清單依<a href="https://course.ncu.edu.tw/p/412-1014-1242.php?Lang=zh-tw" target="_blank" rel="noopener">課務資訊網各單位選修辦法</a>。</p>
+      <h2><span class="n">5</span>有修微學程嗎？（可複選，沒有就不用勾）</h2>
+      <div id="microprograms" style="display:grid;gap:6px"></div>
+      <p class="hint">依官方課號、學分與類別條件檢核微學程進度；選擇不會改變畢業總學分判定。清單依<a href="https://course.ncu.edu.tw/p/412-1014-1239.php?Lang=zh-tw" target="_blank" rel="noopener">課務資訊網微學程列表</a>。</p>
       <label class="check" for="project"><input type="checkbox" id="project" checked>把本學期修課中的課當成會通過，一起算進去</label>
       <div class="row">
         <button id="run" type="button">開始檢核</button>
@@ -188,7 +196,7 @@ footer a { color: var(--accent); }
       </div>
 
       <section class="panel" aria-labelledby="prog-title">
-        <h2 id="prog-title">學分學程</h2>
+        <h2 id="prog-title">學程與專長進度</h2>
         <p class="hint" id="prog-hint"></p>
         <div class="grid2" id="progs"></div>
       </section>
@@ -273,12 +281,40 @@ footer a { color: var(--accent); }
 "use strict";
 const G = window.GradCheck;
 const PROGRAMS = /*__PROGRAMS_114__*/null;
+const MODULE_RULES = /*__MODULE_RULES__*/null;
 const DEPTS = /*__DEPT_RULES__*/[].map((rules) => ({ id: rules.id, label: `${rules.dept}｜${rules.entry_year} 學年度入學`, rules, programs: PROGRAMS }));
 const COMING = ["其他科系：提供應修科目表即可加入"];
 // 課務組公告的 114 學年度學分學程（尚未收錄者先列名稱）
 const ALL_TRACKS = [["人工智慧探索應用等 5 個 TAICA 學程","72-75"],["前瞻半導體","77"],["天文","24"],["統計","47"],["量子技術","65"],["企業管理","01"],["英文MBA","27"],["永續企業","43"],["電子商務(EC)","34"],["會計","03"],["財務金融","02"],["財務工程","26"],["金融科技","62"],["企業資源規劃","14"],["商業智慧與分析","49"],["社會企業與社會創新","64"],["影響力衡量與管理","67"],["菁英領導elite","69"],["創意與創業","46"],["巨量資料分析","51"],["人工智慧技術應用國際","79"],["半導體（國際）","76"],["地球科學資訊","19"],["環境地球科學","20"],["氣候與環境變遷","48"],["太空科技與工程","56"],["認知神經科學","50"],["生科職涯","68"],["智慧生醫晶片","78"],["社會企業","52"],["法律","71"],["智慧製造","66"],["跨領域社會參與","53"],["敘事與數位實踐","55"],["國際事務","57"],["人工智慧跨域應用","58_59"],["跨領域榮譽","63"],["法律與政治","70"],["華語文教學","38"]];
+// 課務資訊網公告的領域專長模組；按學院分類，選擇僅保存在本機。
+const EXPERTISES = {
+  "文學院": ["藝術史跨域實踐", "人文應用與文創實務", "古典文學", "現代文學", "經學義理", "語言文字", "法語入門", "法語文學", "英美語文學-文學研究", "英美語文學-文化研究", "教育理論與方法"],
+  "理學院": ["金融數學", "計算數學", "代數學", "數學分析", "天文物理", "凝態物理", "永續環境化學", "尖端材料化學", "光電系統", "光電設計", "矽光子"],
+  "工學院": ["光機電系統", "材料與製造工程", "能源科技", "智慧機械系統設計", "都市開挖設計與施工", "循環材料", "韌性結構工程", "營建管理", "分離工程", "功能性材料", "高分子材料"],
+  "管理學院": ["人力資源管理", "工業管理", "投資與財務管理", "會計與金融評價", "國際金融", "國際經貿", "物聯網應用", "電子商務"],
+  "資電學院": ["智慧電子", "半導體", "智慧系統", "電波工程", "人工智慧", "軟體系統開發", "通訊工程-資通訊領域", "通訊工程-電通訊領域", "資通電系統安全與跨域應用", "AI加速器設計與應用"],
+  "地科學院": ["空氣與環境污染", "氣候科學", "大氣科學數據解析", "太空工程", "太空科學", "地球科學大數據分析", "工程地質", "地熱與地球物理探勘", "地震危害與工程應用", "大地構造研究", "海洋地質及地球物理探勘"],
+  "生醫理工學院": ["生物多樣性", "生物科技", "腦與心智科學"],
+  "客家學院": ["客家行政"]
+};
+// 沒有整理到官方課程規定的模組也列入結果，但標示待補規則，不會假設已完成。
+Object.values(EXPERTISES).flat().forEach((name) => {
+  if (!MODULE_RULES[`EX:${name}`]) MODULE_RULES[`EX:${name}`] = {
+    name, kind: "領域專長", manual: true,
+    source: "https://course.ncu.edu.tw/p/412-1014-1242.php?Lang=zh-tw"
+  };
+});
+const MICROPROGRAMS = [
+  "智慧永續生活", "智慧數據分析與應用", "社會探索", "創造力", "跨領域榮譽",
+  "DEI 多元共融", "電影研究與實務", "科技.藝術與社會", "藝術與視覺文化",
+  "永續淨零科技", "人工智慧工程應用", "認識永續水資源", "測地與遙測",
+  "地表地球化學循環", "高資產與永續財富管理", "氫能診斷技術", "電解產氫", "智慧通訊技術"
+];
 const pdfId = (url) => ((url || "").match(/114[_/]([\d_-]+)\.pdf$/) || [])[1];
 const selectedTracks = () => [...document.querySelectorAll("#tracks input:checked")].map((x) => x.value);
+const selectedPrograms = () => selectedTracks()
+  .concat([...document.querySelectorAll("#expertises input:checked")].map((x) => `EX:${x.value}`))
+  .concat([...document.querySelectorAll("#microprograms input:checked")].map((x) => `MICRO:${x.value}`));
 const SAMPLE = /*__SAMPLE_PASTE__*/"";
 const OFFERINGS_TEXT = /*__OFFERINGS__*/[];
 let OFFERINGS = [];
@@ -286,13 +322,26 @@ let OFFERINGS_LABEL = "";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-let state = { dept: null, records: [], rep: null, report: null };
+let state = { dept: null, records: [], rep: null, report: null, activePrograms: null };
+
+function programsForApplicationTerm() {
+  const programs = { ...state.dept.programs };
+  Object.entries(programs).forEach(([key, program]) => {
+    const suffix = key === "MICRO:智慧永續生活" ? "smart-living"
+      : key === "MICRO:智慧數據分析與應用" ? "smart-data" : null;
+    const term = suffix ? $(`application-term-${suffix}`)?.value || "after-114-1" : null;
+    const version = (program.application_versions || []).find((v) =>
+      v.before_or_equal === "114-1" && term === "before-114-1");
+    if (version) programs[key] = { ...program, groups: version.groups };
+  });
+  return programs;
+}
 
 function deptOf(id) {
   const d = DEPTS.find((x) => x.id === id);
-  const programs = d.programs.programs;
+  const programs = { ...d.programs.programs, ...MODULE_RULES };
   const questions = d.programs.open_questions || [];
-  return { ...d, programs, questions, catalog: G.buildCatalog(d.rules, programs) };
+  return { ...d, basePrograms: d.programs.programs, programs, questions, catalog: G.buildCatalog(d.rules, programs) };
 }
 
 function initTracks() {
@@ -314,6 +363,59 @@ function initTracks() {
     : "課務組公告的學程都已收錄。";
   document.querySelectorAll("#tracks input").forEach((el) => el.addEventListener("change", () => {
     try { localStorage.setItem("gc-tracks", JSON.stringify(selectedTracks())); } catch (e) { /* 無法儲存就算了 */ }
+    showSources();
+    run();
+  }));
+}
+
+function initExpertises() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem("gc-expertises") || "[]"); } catch (e) { saved = []; }
+  $("expertises").innerHTML = Object.entries(EXPERTISES).map(([college, names]) => `<details>
+    <summary>${esc(college)}（${names.length}）</summary>
+    <div style="display:grid;gap:4px;margin-top:6px">${names.map((name, i) => {
+      const id = `ex-${Object.keys(EXPERTISES).indexOf(college)}-${i}`;
+      return `<label class="check" for="${id}"><input type="checkbox" id="${id}" value="${esc(name)}"${saved.includes(name) ? " checked" : ""}>${esc(name)}${MODULE_RULES[`EX:${name}`]?.manual ? "（規則待補）" : ""}</label>`;
+    }).join("")}</div></details>`).join("");
+  $("expertises").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
+    const selected = [...$("expertises").querySelectorAll("input:checked")].map((x) => x.value);
+    try { localStorage.setItem("gc-expertises", JSON.stringify(selected)); } catch (e) { /* 無法儲存就算了 */ }
+    showSources();
+    run();
+  }));
+}
+
+function initMicroprograms() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem("gc-microprograms") || "[]"); } catch (e) { saved = []; }
+  const versioned = { "智慧永續生活": "smart-living", "智慧數據分析與應用": "smart-data" };
+  const termOptions = (id, storageKey) => {
+    let term = "after-114-1";
+    try { term = localStorage.getItem(storageKey) || term; } catch (e) { /* 使用預設值 */ }
+    return `<label class="application-time" for="application-term-${id}">申請時間
+      <select id="application-term-${id}">
+        <option value="before-114-1"${term === "before-114-1" ? " selected" : ""}>114 學年度第 1 學期（含）以前</option>
+        <option value="after-114-1"${term === "after-114-1" ? " selected" : ""}>114 學年度第 2 學期以後</option>
+      </select></label>`;
+  };
+  $("microprograms").innerHTML = MICROPROGRAMS.map((name, i) => {
+    const termId = versioned[name];
+    const checked = saved.includes(name);
+    return `<div><label class="check" for="micro-${i}">
+      <input type="checkbox" id="micro-${i}" value="${esc(name)}"${checked ? " checked" : ""}>${esc(name)}微學程</label>
+      ${termId ? termOptions(termId, `gc-application-term-${termId}`).replace('<label class="application-time"', `<label class="application-time"${checked ? "" : " hidden"}`) : ""}
+    </div>`;
+  }).join("");
+  $("microprograms").querySelectorAll("input").forEach((el) => el.addEventListener("change", () => {
+    const selected = [...$("microprograms").querySelectorAll("input:checked")].map((x) => x.value);
+    try { localStorage.setItem("gc-microprograms", JSON.stringify(selected)); } catch (e) { /* 無法儲存就算了 */ }
+    const termId = versioned[el.value];
+    if (termId) $(`application-term-${termId}`).hidden = !el.checked;
+    showSources();
+    run();
+  }));
+  Object.entries(versioned).forEach(([name, id]) => $(`application-term-${id}`).addEventListener("change", () => {
+    try { localStorage.setItem(`gc-application-term-${id}`, $(`application-term-${id}`).value); } catch (e) { /* 無法儲存就算了 */ }
     run();
   }));
 }
@@ -402,14 +504,16 @@ function render() {
   const chip = (c, have) => `<span class="chip${have ? " have" : ""}">${names[c] ? esc(names[c]) : ""}<span class="mono">${esc(c)}</span></span>`;
   const progList = Object.entries(rep.programs);
   $("prog-hint").textContent = progList.length
-    ? "學程進度不影響畢業判定。修學程的課可能同時算系上選修（是否可重複認列請向系辦確認）。"
-    : "沒有勾選學分學程。有修的話，在左邊第 3 步勾選，就會顯示進度並納入排課建議。";
+    ? "學分學程、微學程與領域專長會分別檢核；進度不影響畢業判定。選修辦法未整理的領域專長會標示待補規則。"
+    : "勾選正在修讀的學分學程、微學程或領域專長，即可查看修課進度。";
   $("progs").innerHTML = progList.map(([k, p]) => {
-    const def = state.dept.programs[k];
+    const def = (state.activePrograms || state.dept.programs)[k];
     return `<div>
-    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不適用這個學程${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
-    ${p.manual ? `<p class="notice warn">這個學程的辦法沒有列出課號，無法自動檢核，以下僅列出修課規定。</p>` : ""}
-    <div class="reqs">${p.manual ? `<div class="req"><span class="name">${esc(p.name)}</span><span class="val">需 ${p.need} 學分</span></div>` : reqRow(p.name, p.credits, p.need, " 學分")}
+    <h3>${esc(def.kind || "學分學程")}：${esc(p.name)}</h3>
+    ${def.source ? `<p class="hint">官方規定：<a href="${esc(def.source)}" target="_blank" rel="noopener">查看修課辦法</a></p>` : ""}
+    ${p.eligible ? "" : `<p class="notice bad">${esc(state.dept.rules.dept)}不適用「${esc(p.name)}」${def.eligibility ? `（${esc(def.eligibility)}）` : ""}。</p>`}
+    ${p.manual ? `<p class="notice warn">${def.kind === "領域專長" ? "此領域專長的課程規定尚未整理，暫無法自動檢核進度。" : "此模組辦法未提供可供程式核對的課號，暫無法自動檢核進度。"} <a href="${esc(def.source || "#")}" target="_blank" rel="noopener">查看官方規定</a></p>` : ""}
+    <div class="reqs">${p.manual ? "" : reqRow(p.name, p.credits, p.need, " 學分")}
     ${p.need_courses ? reqRow("總門數", p.courses, p.need_courses, " 門") : ""}
     ${p.groups.filter((g) => g.need || g.need_credits || g.need_categories).map((g) => (g.need_categories ? reqRow(g.id + "：涵蓋類別", g.got_categories, g.need_categories, " 類") : "")
       + (g.need && !g.need_categories ? reqRow(g.id, g.got, g.need, " 門") : "") + (g.need_credits ? reqRow(g.id, g.got_credits, g.need_credits, " 學分") : "")).join("")}</div>
@@ -433,7 +537,8 @@ function run() {
     return false;
   }
   state.records = parsed.records;
-  state.rep = G.check(state.dept.rules, parsed.records, state.dept.programs, $("project").checked, selectedTracks());
+  state.activePrograms = programsForApplicationTerm();
+  state.rep = G.check(state.dept.rules, parsed.records, state.activePrograms, $("project").checked, selectedPrograms());
   state.report = { main: G.slimReport(state.rep) };
   const parts = [`讀到 ${parsed.records.length} 門課（${parsed.mode}）`];
   if (parsed.problems.length) parts.push(`${parsed.problems.length} 行看不懂已略過`);
@@ -455,8 +560,9 @@ function simulate() {
   const plan = codes.map((code) => ({ term: "試算", code, name: state.dept.catalog[code]?.name || code,
     attr: "選修", credits: state.dept.catalog[code]?.credits ?? 3, grade: "未到" }));
   const unknown = codes.filter((c) => !state.dept.catalog[c]);
-  const before = G.check(state.dept.rules, state.records, state.dept.programs, true, selectedTracks());
-  const after = G.check(state.dept.rules, state.records.concat(plan), state.dept.programs, true, selectedTracks());
+  const programs = programsForApplicationTerm();
+  const before = G.check(state.dept.rules, state.records, programs, true, selectedPrograms());
+  const after = G.check(state.dept.rules, state.records.concat(plan), programs, true, selectedPrograms());
   const line = (label, a, b, unit) => `<tr><td>${esc(label)}</td><td class="n">${a}</td><td class="n${b > a ? " up" : ""}">${b}</td><td>${unit}</td></tr>`;
   let rows = line("預計總學分", before.total.got, after.total.got, `/ ${after.total.need}`);
   after.choose.forEach((g, i) => (rows += line(g.id, before.choose[i].got, g.got, `/ ${g.pick} 門`)));
@@ -532,8 +638,8 @@ function addStarFromInput() {
 function plan() {
   state.lastPlan = null;
   if (!state.records.length) return;
-  const r = G.planNextTerm(state.dept.rules, state.dept.programs, state.records, OFFERINGS,
-    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedTracks(),
+  const r = G.planNextTerm(state.dept.rules, programsForApplicationTerm(), state.records, OFFERINGS,
+    { maxCredits: +$("plan-max").value, year: +$("plan-year").value, selected: selectedPrograms(),
       military: $("plan-mn").checked, favorites: STARS });
   if (!r.chosen.length) {
     $("plan-out").innerHTML = `<p class="notice warn">這份開課資料裡找不到能補上缺口的課。請加入你們系的開課資料，或確認是否已經修完。</p>`;
@@ -667,10 +773,13 @@ function showSources() {
   const link = (u, label) => /^https?:/.test(u) ? `<a href="${esc(u)}">${esc(label)}</a>` : esc(u);
   $("dept-src").innerHTML = `規則來源：${link(src, "系網站應修科目表")}`;
   $("sources").innerHTML = [link(src, `${state.dept.rules.dept}應修科目表`),
-    ...Object.values(state.dept.programs).map((p) => link(p.source, p.name))].join("、");
+    ...Object.values(state.dept.basePrograms).map((p) => link(p.source, p.name)),
+    ...selectedPrograms().map((k) => state.dept.programs[k]).filter((p) => p?.source).map((p) => link(p.source, p.name))].join("、");
 }
 initSelect();
 initTracks();
+initExpertises();
+initMicroprograms();
 showSources();
 $("paste").value = SAMPLE;
 $("run").addEventListener("click", run);
