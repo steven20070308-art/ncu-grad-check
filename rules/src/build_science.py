@@ -213,7 +213,7 @@ cm = dept(
     },
     92,
     common(gen_note="核心必修四大領域中至少一個領域"),
-    choose=[{"id": "本系必選", "pick": 2, "elective": True, "courses": [C("CM2011", "化學數學", 3), C("CM2012", "化學動力學", 3)]}],
+    choose=[{"id": "本系必選", "pick": 2, "elective": True, "courses": [C("CM2011", "化學數學", 2), C("CM2012", "化學動力學", 2)]}],
     electives=[
         {
             "type": "prefix",
