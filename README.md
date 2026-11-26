@@ -124,7 +124,6 @@ python agent.py --rules rules/im_114.json --paste data/sample_paste.txt --ask "�
 | `web/gradcheck.js` | 網頁版解析、檢核、試算與排課邏輯 |
 | `web/template.html` | 網頁介面模板 |
 | `web/build.py` | 將規則、程式與範例資料組合成 `docs/index.html` |
-| `web/server.py` | 本機網頁伺服器與中央選課系統學期課程查詢代理 |
 | `web/test_parity.js` | 比對 Python 與網頁版檢核結果 |
 | `docs/index.html` | GitHub Pages 使用的單頁網頁 |
 | `worker/gemini-proxy.js` | 選用的 Cloudflare Workers Gemini 中繼站 |
