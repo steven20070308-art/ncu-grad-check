@@ -4,12 +4,20 @@
 
 ## 專題簡介
 
-中央大學已有「畢業審核系統」，但跨類別的學分認列（例如通識超修能抵多少選修、學分學程與系選修能否共用）系統不會算，學生只能自己翻應修科目表手算，常到大四才發現少修。本專題以可驗證的規則計算學分，再用 AI 協助解析輸入與解釋結果。
+中央大學已有「畢業審核系統」，但跨類別的學分認列（例如通識超修能抵多少選修、學分學程與系選修能否共用）系統不會算，學生只能自己翻應修科目表手算，常到大四才發現少修。本專題以可驗證的規則引擎計算學分與排課，再用 AI 以白話回答學生的問題，AI 的回答最後經過數字稽核。
 
 目前收錄 10 個系所／組別的應修規則：企管（114）、資管（114）、財金（113）、經濟（114）、光電（114）、物理甲類與乙類（114）、化學（114）、數學計算與資料科學組（114）、數學科學組（114）。
 
 - **AI 負責「說」**：依檢核報告回答學生的問題、用白話解釋結果
 - **程式負責「算」**：成績解析與學分計算交給可驗證的規則引擎，AI 的回答再經過數字稽核
+
+## 畫面
+
+| 畢業進度（手機） | 排課建議 |
+|---|---|
+| <img src="docs/img/progress.png" alt="畢業進度畫面：還差 59 學分，列出各項缺口" width="380"> | <img src="docs/img/plan.png" alt="排課建議畫面：週課表與每門課補的缺口" width="420"> |
+
+截圖使用範例成績資料（成績為隨機產生）。
 
 ## 主要功能
 
@@ -53,7 +61,6 @@
 | 問 AI 與數字稽核 | ✓ | ✓ |
 
 要在 Python 版使用上述網頁獨有的功能，需先把 `web/gradcheck.js` 對應的邏輯移植到 `engine.py`，並在 `web/test_parity.js` 加入比對。
-- 修改規則或網頁後，執行 `python web/build.py` 重新產生 `docs/index.html`。
 
 ## 系統流程
 
@@ -78,8 +85,15 @@
 
 ## 使用技術與規則來源
 
-- Python 3，核心程式只使用標準函式庫。
-- AI 使用 OpenAI 相容 API，可設定 Google Gemini、Azure OpenAI、OpenAI 或本機 Ollama。
+| 層面 | 技術 |
+|---|---|
+| 規則引擎（CLI） | Python 3（只用標準函式庫）：`engine.py`、`agent.py` |
+| 網頁 | 原生 HTML／CSS／JavaScript 單頁網頁，所有計算在瀏覽器內完成；`web/build.py` 把規則、程式與開課資料打包成 `docs/index.html` |
+| 部署 | GitHub Pages（`main` 分支 `/docs`） |
+| AI（網頁） | Google Gemini（主模型忙碌時自動換備援模型）；透過 Cloudflare Workers 中繼站保管金鑰，或使用者自備金鑰；在 Claude 中開啟時改用 Claude |
+| AI（CLI） | OpenAI 相容 API，可設定 Google Gemini、Azure OpenAI、OpenAI 或本機 Ollama |
+| 可信度 | 規則引擎計算、AI 只負責說明；數字稽核；AI 無法使用時檢核與排課照常運作 |
+| 測試 | `test_agent.py`（解析、路由、稽核、及格判定）；`web/test_parity.js`（Python 與網頁版逐項比對，目前 1,215 項） |
 - 規則來源包括各系應修科目表，以及中央大學公告的學分學程、領域專長與微學程資料；來源連結收錄在 `rules/*.json`。
 
 ## 安裝與執行
@@ -102,9 +116,39 @@ python agent.py --paste data/sample_paste.txt --ask "我還差多少學分？"
 python agent.py --rules rules/im_114.json --paste data/sample_paste.txt --ask "我還差多少學分？" --mock
 ```
 
+### 網頁版（開發）
+
+需要 Python 3 與 Node.js。
+
+```bash
+# 修改 rules/、web/ 或 data/ 後，重新產生 docs/index.html
+python web/build.py
+
+# 比對 Python 與網頁版的檢核結果
+node web/test_parity.js
+
+# 用瀏覽器直接開啟本機檔案預覽
+# Windows：start docs/index.html　macOS：open docs/index.html
+```
+
+推送到 GitHub 後，GitHub Pages 會自動更新網站。選用的 AI 中繼站部署步驟見 [`worker/README.md`](worker/README.md)。
+
 `.env` 已列入 `.gitignore`，請勿將 API 金鑰提交到 GitHub。Python CLI 預設使用 `rules/ba_114.json`；其他科系可用 `--rules` 指定規則檔。更多 AI 連線設定請參考 [`.env.example`](.env.example)。
 
 ## 操作流程
+
+### 網頁版（一般使用者）
+
+1. 用手機或電腦打開 <https://steven20070308-art.github.io/ncu-grad-check/>。
+2. **選科系**：選擇自己的科系與入學年度。
+3. **貼上成績**：登入中大成績查詢頁，在表格內點一下後按 `Ctrl+A`、`Ctrl+C`，回到網頁貼上，按「開始檢核」。想先試用可以按「載入範例」。
+4. **勾選學程**：有修學分學程、領域專長或微學程的話勾選，需要時可加入抵免試算。
+5. **看檢核結果**：最上方顯示還差幾學分；「逐項核對」列出每一項的進度，紅色標籤是還沒完成的項目。
+6. **排課建議**：選要排的學期與學分上限，按「產生排課建議」。想修的課可以加星號優先排，也可以勾選加排全民國防教育。
+7. **問 AI**：在「問 AI」輸入問題，例如「我還差多少學分？下學期怎麼修比較好？」。回答下方會顯示數字稽核結果。
+8. 「需要向系辦確認」列出程式無法判斷的事項；最終結果以系辦審核為準。
+
+### Python CLI
 
 1. 登入中大成績查詢頁，在表格內點一下後按 `Ctrl+A`、`Ctrl+C`。
 2. 將內容存成文字檔，例如 `data/my_paste_private.txt`；檔名包含 `private` 的檔案會被 `.gitignore` 排除。
@@ -126,6 +170,7 @@ python agent.py --rules rules/im_114.json --paste data/sample_paste.txt --ask "�
 | `web/build.py` | 將規則、程式與範例資料組合成 `docs/index.html` |
 | `web/test_parity.js` | 比對 Python 與網頁版檢核結果 |
 | `docs/index.html` | GitHub Pages 使用的單頁網頁 |
+| `docs/img/` | README 使用的畫面截圖 |
 | `worker/gemini-proxy.js` | 選用的 Cloudflare Workers Gemini 中繼站 |
 | `test_agent.py` | CLI Agent 的解析、稽核與路由測試 |
 
@@ -138,8 +183,17 @@ python agent.py --rules rules/im_114.json --paste data/sample_paste.txt --ask "�
 - 同一門課可否同時認列系選修與學分學程、不同學程間的重疊課程能否重複認列，仍需向系辦確認；程式目前依規則設定處理。
 - 本工具僅供參考，最終結果以系辦與註冊組審核為準。
 
-## 作者
+## 相關文件
 
-企管 2A 張育晨（初版與主要功能）  
-企管 2B 林宥欣（功能協作）
-企管 2B 廖健崴 (功能協作)
+- 提案簡報（Microsoft × NCU AI 創新應用主題挑戰賽）：[待上傳 PDF]
+- AI 協作歷程報告：[待上傳 PDF]
+
+## 作者與分工
+
+| 成員 | 主要貢獻 |
+|---|---|
+| 企管 2A 張育晨 | 初版與主要功能：規則引擎、AI Agent 與數字稽核、網頁版、排課建議、10 系所規則、AI 中繼站 |
+| 企管 2B 林宥欣 | 領域專長與微學程規則、抵免試算、介面調整、README |
+| 企管 2B 廖健崴 | 物理系規則與開課資料整理 |
+
+各成員的修改紀錄可在 [Commits](https://github.com/steven20070308-art/ncu-grad-check/commits/main) 查看。
