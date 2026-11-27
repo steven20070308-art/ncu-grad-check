@@ -834,8 +834,12 @@ function plan() {
 // 兩個值都填好才會出現評價功能。Firebase 設定（含 apiKey）是公開資訊，不是密鑰，可以放在網頁裡；
 // 安全性靠 Firebase 的「授權網域」與 Worker 驗證登入 token。
 const REVIEW_API = "";          // 評價 Worker 網址，例如 https://ncu-grad-reviews.xxx.workers.dev
-const FIREBASE_CONFIG = null;   // Firebase 主控台 → 專案設定 → 你的應用程式 → firebaseConfig，例如
-                                // { apiKey: "AIza…", authDomain: "xxx.firebaseapp.com", projectId: "xxx", appId: "1:…:web:…" }
+const FIREBASE_CONFIG = {       // Firebase 主控台 → 專案設定 → 你的應用程式 → firebaseConfig（只需要登入用的欄位）
+  apiKey: "AIzaSyBWzb5SI9vIa796kad2Nq0qifRuz48WgOo",
+  authDomain: "ncu-grad-check.firebaseapp.com",
+  projectId: "ncu-grad-check",
+  appId: "1:828822009780:web:b85154e65673852f7ba4e1",
+};
 const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/13.2.0";
 const REVIEW_DOMAIN = "g.ncu.edu.tw";  // 學校 Google 帳號網域，要和 Worker 的 ALLOWED_DOMAINS 一致
 const REVIEW_MIN = 3;           // 要和 Worker 的 MIN_SHOW 一致（只用在說明文字）
