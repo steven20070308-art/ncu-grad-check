@@ -259,7 +259,7 @@ footer a { color: var(--accent); }
         <h2 id="rv-title">評價修過的課</h2>
         <p class="hint">幫學弟妹選課：只填星等和固定選項，不寫文字。需用學校 Google 帳號登入，一人一門課只算一則，可以隨時修改或刪除。
           伺服器不存你的信箱或姓名，只存一串無法還原的代碼；同一門課累積 <span id="rv-min">3</span> 則以上才公開統計，成績單也不會上傳。</p>
-        <div class="row" id="rv-login"><div id="rv-gbtn"></div><span class="hint" id="rv-who"></span>
+        <div class="row" id="rv-login"><button id="rv-login-btn" type="button" hidden>用學校 Google 帳號登入</button><span class="hint" id="rv-who"></span>
           <button id="rv-logout" type="button" class="ghost" hidden>登出</button></div>
         <form id="rv-form" class="rv-form" hidden>
           <label>課程<select id="rv-course"></select></label>
@@ -831,19 +831,22 @@ function plan() {
 }
 
 // ---------- 課程評價（後端：worker/reviews.js，部署說明見 worker/README.md）----------
-// 兩個值都填好才會出現評價功能；GOOGLE_CLIENT_ID 是公開資訊，不是密鑰，可以放在網頁裡。
+// 兩個值都填好才會出現評價功能。Firebase 設定（含 apiKey）是公開資訊，不是密鑰，可以放在網頁裡；
+// 安全性靠 Firebase 的「授權網域」與 Worker 驗證登入 token。
 const REVIEW_API = "";          // 評價 Worker 網址，例如 https://ncu-grad-reviews.xxx.workers.dev
-const GOOGLE_CLIENT_ID = "";    // Google OAuth 用戶端 ID（xxx.apps.googleusercontent.com）
+const FIREBASE_CONFIG = null;   // Firebase 主控台 → 專案設定 → 你的應用程式 → firebaseConfig，例如
+                                // { apiKey: "AIza…", authDomain: "xxx.firebaseapp.com", projectId: "xxx", appId: "1:…:web:…" }
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/13.2.0";
 const REVIEW_DOMAIN = "g.ncu.edu.tw";  // 學校 Google 帳號網域，要和 Worker 的 ALLOWED_DOMAINS 一致
 const REVIEW_MIN = 3;           // 要和 Worker 的 MIN_SHOW 一致（只用在說明文字）
-const RV_ON = Boolean(REVIEW_API && GOOGLE_CLIENT_ID);
+const RV_ON = Boolean(REVIEW_API && FIREBASE_CONFIG);
 const RV_CODE = /^(?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4})$/;
 const RV_LABEL = {
   workload: { light: "作業少", medium: "作業普通", heavy: "作業多" },
   grading: { lenient: "給分甜", normal: "給分普通", strict: "給分嚴" },
   attendance: { none: "幾乎不點名", sometimes: "偶爾點名", always: "每堂點名" },
 };
-const rv = { token: "", exp: 0, mine: [], cache: new Map(), googleReady: false };
+const rv = { fb: null, auth: null, user: null, ready: false, mine: [], cache: new Map() };
 
 const rvTeacher = (teachers) => [...new Set(teachers || [])].slice(0, 5).join("、");
 const rvKey = (code, teacher) => `${code}|${teacher}`;
@@ -924,10 +927,10 @@ function refreshReviewPanel() {
   $("rv-panel").hidden = false;
   const courses = rvPassedCourses();
   const status = $("rv-status");
-  const loggedIn = Boolean(rv.token) && Date.now() < rv.exp;
-  $("rv-gbtn").hidden = loggedIn;
+  const loggedIn = Boolean(rv.user);
+  $("rv-login-btn").hidden = loggedIn || !rv.ready;
   $("rv-logout").hidden = !loggedIn;
-  if (!loggedIn) $("rv-who").textContent = rv.googleReady ? `請用 @${REVIEW_DOMAIN} 帳號登入` : "";
+  $("rv-who").textContent = loggedIn ? `已登入 ${rv.user.email}` : rv.ready ? `請用 @${REVIEW_DOMAIN} 帳號登入` : "";
   if (!courses.length) {
     $("rv-form").hidden = true;
     status.textContent = $("paste").value === SAMPLE ? "目前是範例成績單，貼上自己的成績單後，才能評價自己修過的課。" : "成績單上還沒有已及格的課。";
@@ -944,48 +947,56 @@ function refreshReviewPanel() {
   status.textContent = "老師清單來自內建開課資料；你修課那學期的老師不在清單上，就選「不確定／不在清單」。";
 }
 
-function rvLogout(msg) {
-  rv.token = ""; rv.exp = 0; rv.mine = [];
-  try { window.google?.accounts?.id?.disableAutoSelect(); } catch (e) { /* 無妨 */ }
+async function rvLogout(msg) {
+  rv.mine = [];
+  rv.user = null;  // 先清掉，避免登出事件把下面的提示訊息蓋掉
+  try { if (rv.auth) await rv.fb.signOut(rv.auth); } catch (e) { /* 無妨 */ }
   refreshReviewPanel();
   $("rv-mine-box").hidden = true;
   if (msg) $("rv-status").textContent = msg;
 }
 
 async function rvPost(path, body) {
-  if (!rv.token || Date.now() > rv.exp - 30000) { rvLogout("登入已過期，請重新登入。"); return null; }
-  const r = await fetchJSON(`${REVIEW_API}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: rv.token, ...body }) }, 15000);
-  if (r.status === 401) { rvLogout(r.body?.error || "請重新登入。"); return null; }
+  if (!rv.user) { $("rv-status").textContent = "請先登入。"; return null; }
+  let token = "";
+  try { token = await rv.user.getIdToken(); } catch (e) { await rvLogout("登入已失效，請重新登入。"); return null; }  // Firebase 會自動換新 token
+  const r = await fetchJSON(`${REVIEW_API}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, ...body }) }, 15000);
+  if (r.status === 401 || r.status === 403) { await rvLogout(r.body?.error || "請重新登入。"); return null; }
   if (r.status !== 200) { $("rv-status").textContent = r.body?.error || `送出失敗（${r.text || r.status}）`; return null; }
   return r.body;
 }
 
-async function rvOnCredential(resp) {
-  let payload = {};
-  try {
-    const b64 = resp.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
-  } catch (e) { $("rv-status").textContent = "登入資訊讀取失敗，請再試一次。"; return; }
-  if (payload.hd !== REVIEW_DOMAIN) { rvLogout(`只接受學校帳號（@${REVIEW_DOMAIN}），請換帳號登入。`); return; }
-  rv.token = resp.credential;
-  rv.exp = payload.exp * 1000;
-  $("rv-who").textContent = `已登入 ${payload.email}`;
+// Firebase 回報登入狀態（重新整理頁面也會記得登入）
+async function rvOnUser(user) {
+  if (!user) {
+    if (!rv.user) return;  // 沒登入，或 rvLogout 已處理過（不蓋掉它的提示）
+    rv.user = null; rv.mine = []; refreshReviewPanel(); $("rv-mine-box").hidden = true; return;
+  }
+  const domain = String(user.email || "").toLowerCase().split("@")[1];
+  if (domain !== REVIEW_DOMAIN) { rv.user = user; await rvLogout(`只接受學校帳號（@${REVIEW_DOMAIN}），請換帳號登入。`); return; }
+  rv.user = user;
+  refreshReviewPanel();
   const r = await rvPost("/mine", {});
   if (!r) return;
   rv.mine = r.reviews || [];
   refreshReviewPanel();
 }
 
-function rvLoadGoogle() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) return resolve();
-    const s = document.createElement("script");
-    s.src = "https://accounts.google.com/gsi/client";
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("load"));
-    document.head.appendChild(s);
-  });
+async function rvLogin() {
+  const provider = new rv.fb.GoogleAuthProvider();
+  provider.setCustomParameters({ hd: REVIEW_DOMAIN, prompt: "select_account" });  // hd 只是預選學校帳號，真正把關在 Worker
+  try {
+    await rv.fb.signInWithPopup(rv.auth, provider);
+  } catch (e) {
+    const msg = {
+      "auth/popup-closed-by-user": "",
+      "auth/cancelled-popup-request": "",
+      "auth/popup-blocked": "登入視窗被瀏覽器擋下，請允許此網站開啟彈出視窗後再試一次。",
+      "auth/unauthorized-domain": "這個網址還沒加入 Firebase 的授權網域，請聯絡網站管理者。",
+      "auth/network-request-failed": "網路連線失敗，請稍後再試。",
+    }[e.code];
+    $("rv-status").textContent = msg ?? `登入失敗（${e.code || e.message}）`;
+  }
 }
 
 async function initReviews() {
@@ -1023,16 +1034,18 @@ async function initReviews() {
     $("rv-status").textContent = "已刪除這則評價。";
     loadReviewSummaries();
   });
+  $("rv-login-btn").addEventListener("click", rvLogin);
   refreshReviewPanel();
   try {
-    await rvLoadGoogle();
-    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: rvOnCredential, hd: REVIEW_DOMAIN,
-      auto_select: false, cancel_on_tap_outside: true, ux_mode: "popup" });
-    google.accounts.id.renderButton($("rv-gbtn"), { type: "standard", text: "signin_with", shape: "pill", locale: "zh-TW" });
-    rv.googleReady = true;
+    const [app, auth] = await Promise.all([import(`${FIREBASE_SDK}/firebase-app.js`), import(`${FIREBASE_SDK}/firebase-auth.js`)]);
+    rv.fb = auth;
+    rv.auth = auth.getAuth(app.initializeApp(FIREBASE_CONFIG));
+    rv.auth.languageCode = "zh-TW";
+    auth.onAuthStateChanged(rv.auth, rvOnUser);
+    rv.ready = true;
     refreshReviewPanel();
   } catch (e) {
-    $("rv-status").textContent = "Google 登入元件載入失敗（可能被瀏覽器擋下），暫時無法評價。";
+    $("rv-status").textContent = "登入元件載入失敗（可能被瀏覽器或網路擋下），暫時無法評價。";
   }
 }
 

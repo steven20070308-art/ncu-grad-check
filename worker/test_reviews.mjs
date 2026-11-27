@@ -2,10 +2,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
-import worker, { verifyGoogleToken } from "./reviews.js";
+import worker, { verifyFirebaseToken } from "./reviews.js";
 
 const ORIGIN = "https://steven20070308-art.github.io";
-const CLIENT = "test-client.apps.googleusercontent.com";
+const PROJECT = "ncu-grad-test";
 
 // --- 模擬 D1 ---
 const db = new DatabaseSync(":memory:");
@@ -20,20 +20,21 @@ const D1 = {
     }) };
   },
 };
-const env = { DB: D1, GOOGLE_CLIENT_ID: CLIENT, REVIEW_SALT: "salt", ALLOWED_DOMAINS: "g.ncu.edu.tw", MIN_SHOW: "2", DAILY_WRITES: "5" };
+const env = { DB: D1, FIREBASE_PROJECT_ID: PROJECT, REVIEW_SALT: "salt", ALLOWED_DOMAINS: "g.ncu.edu.tw", MIN_SHOW: "2", DAILY_WRITES: "5" };
 
-// --- 假的 Google 金鑰與 ID token ---
+// --- 假的 Firebase 金鑰與 ID token ---
 const kp = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
 const other = await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
 const jwk = { ...(await crypto.subtle.exportKey("jwk", kp.publicKey)), kid: "k1", alg: "RS256", use: "sig" };
 globalThis.fetch = async (url) => {
-  assert.equal(String(url), "https://www.googleapis.com/oauth2/v3/certs");
+  assert.equal(String(url), "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com");
   return new Response(JSON.stringify({ keys: [jwk] }), { headers: { "Cache-Control": "max-age=600" } });
 };
 const enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 async function token(claims = {}, key = kp.privateKey, kid = "k1") {
-  const body = { iss: "https://accounts.google.com", aud: CLIENT, sub: "1001", email: "s1@g.ncu.edu.tw", email_verified: true,
-    hd: "g.ncu.edu.tw", exp: Math.floor(Date.now() / 1000) + 3600, ...claims };
+  const now = Math.floor(Date.now() / 1000);
+  const body = { iss: `https://securetoken.google.com/${PROJECT}`, aud: PROJECT, sub: "uid1001", email: "s1@g.ncu.edu.tw", email_verified: true,
+    iat: now, auth_time: now, exp: now + 3600, firebase: { sign_in_provider: "google.com", identities: {} }, ...claims };
   const data = `${enc({ alg: "RS256", kid, typ: "JWT" })}.${enc(body)}`;
   const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(data));
   return `${data}.${Buffer.from(sig).toString("base64url")}`;
@@ -50,19 +51,23 @@ let n = 0;
 const t = async (name, fn) => { await fn(); n++; console.log("✓", name); };
 
 // --- 驗證 ---
-await t("合法學校帳號通過", async () => assert.equal((await verifyGoogleToken(await token(), env)).sub, "1001"));
+await t("合法學校帳號通過", async () => assert.equal((await verifyFirebaseToken(await token(), env)).sub, "uid1001"));
+await t("信箱大寫也認得", async () => assert.equal((await verifyFirebaseToken(await token({ email: "S1@G.NCU.EDU.TW" }), env)).sub, "uid1001"));
 for (const [name, claims, status] of [
-  ["個人 Gmail 被擋", { hd: undefined, email: "x@gmail.com" }, 403],
-  ["hd 對但信箱網域不對被擋", { email: "x@gmail.com" }, 403],
-  ["別的網站的 token 被擋", { aud: "other" }, 401],
+  ["個人 Gmail 被擋", { email: "x@gmail.com" }, 403],
+  ["相似網域被擋", { email: "x@g.ncu.edu.tw.evil.com" }, 403],
+  ["別的 Firebase 專案的 token 被擋", { aud: "other", iss: "https://securetoken.google.com/other" }, 401],
+  ["aud 對但發行者不對被擋", { iss: "https://accounts.google.com" }, 401],
   ["過期 token 被擋", { exp: Math.floor(Date.now() / 1000) - 10 }, 401],
-  ["發行者不對被擋", { iss: "evil.example" }, 401],
+  ["未來簽發的 token 被擋", { iat: Math.floor(Date.now() / 1000) + 3600 }, 401],
   ["信箱未驗證被擋", { email_verified: false }, 403],
+  ["不是 Google 登入（帳密登入）被擋", { firebase: { sign_in_provider: "password" } }, 403],
+  ["匿名登入被擋", { firebase: { sign_in_provider: "anonymous" }, email: undefined }, 403],
 ]) await t(name, async () => assert.equal((await call("POST", "/review", { token: await token(claims), ...rate() })).status, status));
 await t("偽造簽章被擋", async () => assert.equal((await call("POST", "/review", { token: await token({}, other.privateKey), ...rate() })).status, 401));
 await t("竄改內容被擋", async () => {
   const [h, , s] = (await token()).split(".");
-  const forged = `${h}.${enc({ iss: "https://accounts.google.com", aud: CLIENT, sub: "1001", email: "s1@g.ncu.edu.tw", email_verified: true, hd: "g.ncu.edu.tw", exp: 9e9 })}.${s}`;
+  const forged = `${h}.${enc({ iss: `https://securetoken.google.com/${PROJECT}`, aud: PROJECT, sub: "uid1001", email: "s1@g.ncu.edu.tw", email_verified: true, iat: 0, auth_time: 0, exp: 9e9, firebase: { sign_in_provider: "google.com" } })}.${s}`;
   assert.equal((await call("POST", "/review", { token: forged, ...rate() })).status, 401);
 });
 await t("沒登入被擋", async () => assert.equal((await call("POST", "/review", rate())).status, 401));
@@ -87,7 +92,7 @@ await t("同一人再評是修改不是新增", async () => {
 });
 await t("資料庫不存信箱與帳號 ID", async () => {
   const row = JSON.stringify(db.prepare("SELECT * FROM reviews").get());
-  assert.ok(!row.includes("s1@g.ncu.edu.tw") && !row.includes("1001"));
+  assert.ok(!row.includes("s1@g.ncu.edu.tw") && !row.includes("uid1001"));
 });
 await t("達門檻後公開統計", async () => {
   await call("POST", "/review", { token: await token({ sub: "1002", email: "s2@g.ncu.edu.tw" }), ...rate({ stars: 4, grading: "strict" }) });

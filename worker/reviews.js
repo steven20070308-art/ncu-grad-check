@@ -1,12 +1,12 @@
 // 中大畢業學分檢核：課程評價 API（Cloudflare Workers + D1）
 //
 // 評價內容只有星等與固定選項（作業量／給分／點名），不收文字，避免需要審核留言。
-// 身分：前端用 Google 登入取得 ID token，這裡驗證簽章、確認是學校網域帳號。
-// 隱私：不存信箱或姓名，只存 SHA-256(REVIEW_SALT + Google 帳號 ID)，用來確保一人一課一評。
+// 身分：前端用 Firebase Authentication 的 Google 登入取得 ID token，這裡驗證簽章、確認是學校網域帳號。
+// 隱私：不存信箱或姓名，只存 SHA-256(REVIEW_SALT + Firebase 使用者 ID)，用來確保一人一課一評。
 //
 // 環境設定（Cloudflare 後台 → Settings → Variables and Secrets / Bindings）：
 //   DB               D1 資料庫綁定（先執行 schema.sql 建表）
-//   GOOGLE_CLIENT_ID Google OAuth 用戶端 ID（Text）
+//   FIREBASE_PROJECT_ID  Firebase 專案 ID（Text，例如 ncu-grad-check）
 //   REVIEW_SALT      隨機長字串（Secret），設定後不要再改，否則同一人會被當成新的人
 //   ALLOWED_ORIGIN   允許的網站，逗號分隔（預設 https://steven20070308-art.github.io）
 //   ALLOWED_DOMAINS  允許的 Google 帳號網域，逗號分隔（預設 g.ncu.edu.tw）
@@ -27,8 +27,8 @@ const CHOICES = {
   attendance: ["none", "sometimes", "always"],
 };
 const MAX_KEYS = 80;
-const ISSUERS = ["accounts.google.com", "https://accounts.google.com"];
-const JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
+// Firebase ID token 的公開金鑰（JWK 格式）
+const JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 
 let jwksCache = { keys: null, until: 0 };
 
@@ -51,20 +51,21 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
-// ---------- Google ID token 驗證 ----------
+// ---------- Firebase ID token 驗證 ----------
+// 規則見 https://firebase.google.com/docs/auth/admin/verify-id-tokens
 const b64url = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(s.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
 const parsePart = (s) => JSON.parse(new TextDecoder().decode(b64url(s)));
 
 async function googleKeys(force = false) {
   if (!force && jwksCache.keys && Date.now() < jwksCache.until) return jwksCache.keys;
   const r = await fetch(JWKS_URL);
-  if (!r.ok) throw new HttpError(503, "暫時無法驗證 Google 登入，請稍後再試");
+  if (!r.ok) throw new HttpError(503, "暫時無法驗證登入，請稍後再試");
   const maxAge = Number((r.headers.get("Cache-Control") || "").match(/max-age=(\d+)/)?.[1] || 3600);
   jwksCache = { keys: (await r.json()).keys || [], until: Date.now() + maxAge * 1000 };
   return jwksCache.keys;
 }
 
-export async function verifyGoogleToken(token, env, now = Date.now()) {
+export async function verifyFirebaseToken(token, env, now = Date.now()) {
   const parts = String(token || "").split(".");
   if (parts.length !== 3) throw new HttpError(401, "請先用學校 Google 帳號登入");
   let header, payload;
@@ -78,14 +79,21 @@ export async function verifyGoogleToken(token, env, now = Date.now()) {
   const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64url(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
   if (!ok) throw new HttpError(401, "登入資訊無法驗證，請重新登入");
 
-  if (!ISSUERS.includes(payload.iss)) throw new HttpError(401, "登入資訊無法驗證，請重新登入");
-  if (!env.GOOGLE_CLIENT_ID || payload.aud !== env.GOOGLE_CLIENT_ID) throw new HttpError(401, "登入資訊不是本網站發出的");
+  const project = env.FIREBASE_PROJECT_ID;
+  const skew = 5 * 60 * 1000;  // 容許伺服器時鐘差 5 分鐘
+  if (!project || payload.aud !== project || payload.iss !== `https://securetoken.google.com/${project}`) {
+    throw new HttpError(401, "登入資訊不是本網站發出的");
+  }
   if (!(payload.exp * 1000 > now)) throw new HttpError(401, "登入已過期，請重新登入");
-  if (payload.email_verified !== true && payload.email_verified !== "true") throw new HttpError(403, "這個 Google 帳號的信箱尚未驗證");
+  if (!(payload.iat * 1000 <= now + skew) || !(payload.auth_time * 1000 <= now + skew)) throw new HttpError(401, "登入資訊時間不正確");
+  if (typeof payload.sub !== "string" || !payload.sub || payload.sub.length > 128) throw new HttpError(401, "登入資訊格式錯誤");
+  if (payload.firebase?.sign_in_provider !== "google.com") throw new HttpError(403, "請用學校 Google 帳號登入");
+  if (payload.email_verified !== true) throw new HttpError(403, "這個 Google 帳號的信箱尚未驗證");
 
+  // Firebase 的 token 沒有 hd 欄位，以 Google 驗證過的信箱網域判斷
   const domains = list(env.ALLOWED_DOMAINS, "g.ncu.edu.tw");
-  const emailDomain = String(payload.email || "").split("@")[1] || "";
-  if (!domains.includes(payload.hd) || !domains.includes(emailDomain)) {
+  const emailDomain = String(payload.email || "").toLowerCase().split("@")[1] || "";
+  if (!domains.includes(emailDomain)) {
     throw new HttpError(403, `只接受學校帳號（${domains.map((d) => "@" + d).join("、")}）`);
   }
   return payload;
@@ -148,14 +156,14 @@ async function summary(env, url) {
 }
 
 async function mine(env, body) {
-  const user = await userHash(env, (await verifyGoogleToken(body.token, env)).sub);
+  const user = await userHash(env, (await verifyFirebaseToken(body.token, env)).sub);
   const { results = [] } = await env.DB.prepare(
     "SELECT course_code AS code, teacher, stars, workload, grading, attendance FROM reviews WHERE user_hash = ?").bind(user).all();
   return { reviews: results };
 }
 
 async function review(env, body) {
-  const payload = await verifyGoogleToken(body.token, env);
+  const payload = await verifyFirebaseToken(body.token, env);
   const user = await userHash(env, payload.sub);
   const { code, teacher } = courseKey(body.code, body.teacher);
   const now = Date.now();
