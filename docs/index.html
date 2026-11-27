@@ -142,6 +142,18 @@ details .chips { margin-top: 8px; }
 .star { border: 0; background: none; padding: 0 4px 0 0; font-size: 16px; color: var(--accent, #c80); cursor: pointer; min-width: 0; box-shadow: none; }
 #star-chips button.chip { cursor: pointer; color: var(--ink); background: var(--paper); font-weight: 400; min-height: 0; }
 .plan .why { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+[hidden] { display: none !important; }
+.plan .rv { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+.plan .rv b { color: var(--warn); font-weight: 600; }
+.rv-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.rv-form > label:first-child, .rv-form > .rv-stars, .rv-form > .row { grid-column: 1 / -1; }
+.rv-stars { border: 0; padding: 0; margin: 0; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.rv-stars legend { font-size: 13px; color: var(--muted); padding: 0; margin-bottom: 4px; width: 100%; }
+.rv-stars label { display: inline-flex; cursor: pointer; }
+.rv-stars input { position: absolute; opacity: 0; pointer-events: none; }
+.rv-stars span { font-size: 26px; line-height: 1; color: var(--line); padding: 2px; }
+.rv-stars span.on { color: var(--warn); }
+.rv-stars input:focus-visible + span { outline: 2px solid var(--accent); border-radius: 4px; }
 .answer { white-space: pre-wrap; font-size: 14.5px; line-height: 1.75; margin: 0; }
 .notes { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
 footer { font-size: 12.5px; color: var(--muted); }
@@ -241,6 +253,26 @@ footer a { color: var(--accent); }
           <textarea id="off-paste" spellcheck="false" style="min-height:90px"></textarea>
           <div class="row"><button id="off-add" type="button" class="ghost">加入開課資料</button></div>
         </details>
+      </section>
+
+      <section class="panel" aria-labelledby="rv-title" id="rv-panel" hidden>
+        <h2 id="rv-title">評價修過的課</h2>
+        <p class="hint">幫學弟妹選課：只填星等和固定選項，不寫文字。需用學校 Google 帳號登入，一人一門課只算一則，可以隨時修改或刪除。
+          伺服器不存你的信箱或姓名，只存一串無法還原的代碼；同一門課累積 <span id="rv-min">3</span> 則以上才公開統計，成績單也不會上傳。</p>
+        <div class="row" id="rv-login"><div id="rv-gbtn"></div><span class="hint" id="rv-who"></span>
+          <button id="rv-logout" type="button" class="ghost" hidden>登出</button></div>
+        <form id="rv-form" class="rv-form" hidden>
+          <label>課程<select id="rv-course"></select></label>
+          <label>授課老師<select id="rv-teacher"></select></label>
+          <fieldset class="rv-stars" id="rv-stars"><legend>整體推薦</legend></fieldset>
+          <label>作業量<select id="rv-workload"><option value="">請選擇</option><option value="light">少</option><option value="medium">普通</option><option value="heavy">多</option></select></label>
+          <label>給分<select id="rv-grading"><option value="">請選擇</option><option value="lenient">甜</option><option value="normal">普通</option><option value="strict">嚴</option></select></label>
+          <label>點名<select id="rv-attendance"><option value="">請選擇</option><option value="none">幾乎不點</option><option value="sometimes">偶爾點</option><option value="always">每堂都點</option></select></label>
+          <div class="row"><button id="rv-submit" type="submit">送出評價</button>
+            <button id="rv-delete" type="button" class="ghost" hidden>刪除這則評價</button></div>
+        </form>
+        <p class="hint" id="rv-status"></p>
+        <details id="rv-mine-box" hidden><summary id="rv-mine-title">我評過的課</summary><ul class="notes" id="rv-mine"></ul></details>
       </section>
 
       <div class="grid2">
@@ -1255,7 +1287,9 @@ function run() {
   msg.textContent = (text === SAMPLE ? "目前是範例資料（成績為假）。" : "") + parts.join("；") + "。";
   render();
   $("plan-term").value = G.guessNextTerm(state.records);
+  if (RV_ON) rv.cache.clear();  // 重新檢核時重抓最新評價
   if (OFFERINGS.length) plan();
+  refreshReviewPanel();
   $("sim-out").innerHTML = "";
   $("ai-answer").textContent = "";
   return true;
@@ -1368,8 +1402,215 @@ function plan() {
       ${r.later.length ? `<p class="hint">這學期也有開 ${r.later.map(esc).join("、")}，但應修科目表建議之後再修，所以先不排。</p>` : ""}</div>
     <div><ul class="plan">${r.chosen.map((c) => `<li><span>${starBtn(c.code)}<b>${esc(c.name)}</b> <span class="mono">${esc(c.code)}-${esc(c.section.section)}</span></span>
       <span class="mono">${c.credits} 學分</span>
-      <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span></li>`).join("")}</ul>
+      <span class="why">${esc(c.why)}｜${esc(c.section.place)}${c.section.teachers.length ? "｜" + esc(c.section.teachers.slice(0, 2).join("、")) : ""}${c.section.noFirstRound ? "｜不開放初選，需密碼卡" : ""}</span>${rvSlot(c.code, c.section.teachers)}</li>`).join("")}</ul>
     ${skipped.length ? `<details><summary>沒排進去的課（${skipped.length}）</summary><ul class="notes">${skipped.map((c) => `<li>${starBtn(c.code)}${esc(c.name)} ${esc(c.code)}：${esc(c.skipped)}</li>`).join("")}</ul></details>` : ""}</div>`;
+  loadReviewSummaries();
+}
+
+// ---------- 課程評價（後端：worker/reviews.js，部署說明見 worker/README.md）----------
+// 兩個值都填好才會出現評價功能；GOOGLE_CLIENT_ID 是公開資訊，不是密鑰，可以放在網頁裡。
+const REVIEW_API = "";          // 評價 Worker 網址，例如 https://ncu-grad-reviews.xxx.workers.dev
+const GOOGLE_CLIENT_ID = "";    // Google OAuth 用戶端 ID（xxx.apps.googleusercontent.com）
+const REVIEW_DOMAIN = "g.ncu.edu.tw";  // 學校 Google 帳號網域，要和 Worker 的 ALLOWED_DOMAINS 一致
+const REVIEW_MIN = 3;           // 要和 Worker 的 MIN_SHOW 一致（只用在說明文字）
+const RV_ON = Boolean(REVIEW_API && GOOGLE_CLIENT_ID);
+const RV_CODE = /^(?:[A-Z]{2}[A-Z0-9]\d{3}|[A-Z]{3}\d{4})$/;
+const RV_LABEL = {
+  workload: { light: "作業少", medium: "作業普通", heavy: "作業多" },
+  grading: { lenient: "給分甜", normal: "給分普通", strict: "給分嚴" },
+  attendance: { none: "幾乎不點名", sometimes: "偶爾點名", always: "每堂點名" },
+};
+const rv = { token: "", exp: 0, mine: [], cache: new Map(), googleReady: false };
+
+const rvTeacher = (teachers) => [...new Set(teachers || [])].slice(0, 5).join("、");
+const rvKey = (code, teacher) => `${code}|${teacher}`;
+
+function rvSlot(code, teachers) {
+  if (!RV_ON) return "";
+  return `<span class="rv" data-rv-code="${esc(code)}" data-rv-teacher="${esc(rvTeacher(teachers))}">評價載入中…</span>`;
+}
+
+function rvText(s, scope) {
+  const top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1])[0][0];
+  return `<b>★${s.avg.toFixed(1)}</b>（${s.n} 則${scope}）｜${RV_LABEL.workload[top(s.workload)]}・${RV_LABEL.grading[top(s.grading)]}・${RV_LABEL.attendance[top(s.attendance)]}`;
+}
+
+// 排課建議旁的評價：先找「同課同老師」，沒有再看「未指定老師」的評價
+async function loadReviewSummaries() {
+  if (!RV_ON) return;
+  const slots = [...document.querySelectorAll("[data-rv-code]")];
+  if (!slots.length) return;
+  const keys = new Set();
+  slots.forEach((el) => { keys.add(rvKey(el.dataset.rvCode, el.dataset.rvTeacher)); keys.add(rvKey(el.dataset.rvCode, "")); });
+  const need = [...keys].filter((k) => !rv.cache.has(k));
+  if (need.length) {
+    const r = await fetchJSON(`${REVIEW_API}/summary?keys=${encodeURIComponent(need.join(","))}`, {}, 15000);
+    if (r.status !== 200 || !r.body) { slots.forEach((el) => { el.textContent = "評價暫時無法載入"; }); return; }
+    need.forEach((k) => rv.cache.set(k, r.body[k] || { n: 0 }));
+  }
+  slots.forEach((el) => {
+    const own = rv.cache.get(rvKey(el.dataset.rvCode, el.dataset.rvTeacher)) || { n: 0 };
+    const any = el.dataset.rvTeacher ? (rv.cache.get(rvKey(el.dataset.rvCode, "")) || { n: 0 }) : { n: 0 };
+    if (own.avg) el.innerHTML = rvText(own, "");
+    else if (any.avg) el.innerHTML = rvText(any, "，未指定老師");
+    else {
+      const n = own.n + any.n;
+      el.textContent = n ? `評價累積中（${n} 則，滿 ${REVIEW_MIN} 則公開）` : "還沒有評價";
+    }
+  });
+}
+
+// 只能評價成績單上已及格的課；範例成績單不能評
+function rvPassedCourses() {
+  if (!state.records.length || $("paste").value === SAMPLE) return [];
+  const seen = new Map();
+  state.records.filter((r) => G.passed(r, false) && RV_CODE.test(r.code)).forEach((r) => seen.set(r.code, r));
+  return [...seen.values()].sort((a, b) => a.code.localeCompare(b.code));
+}
+
+function rvTeacherOptions(code) {
+  const list = [...new Set(OFFERINGS.filter((o) => o.code === code).map((o) => rvTeacher(o.teachers)).filter(Boolean))];
+  return [...list.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`), `<option value="">不確定／不在清單（不分老師）</option>`].join("");
+}
+
+function rvSetStars(n) {
+  [...$("rv-stars").querySelectorAll("input")].forEach((i) => { i.checked = Number(i.value) === n; });
+  [...$("rv-stars").querySelectorAll("span")].forEach((s, i) => s.classList.toggle("on", i < n));
+}
+
+function rvFillForm() {
+  const code = $("rv-course").value;
+  const teacher = $("rv-teacher").value;
+  const mine = rv.mine.find((m) => m.code === code && m.teacher === teacher);
+  rvSetStars(mine ? mine.stars : 0);
+  ["workload", "grading", "attendance"].forEach((k) => { $(`rv-${k}`).value = mine ? mine[k] : ""; });
+  $("rv-delete").hidden = !mine;
+  $("rv-submit").textContent = mine ? "更新評價" : "送出評價";
+}
+
+function rvRenderMine() {
+  const names = Object.fromEntries(state.records.map((r) => [r.code, r.name]));
+  $("rv-mine-box").hidden = !rv.mine.length;
+  $("rv-mine-title").textContent = `我評過的課（${rv.mine.length}）`;
+  $("rv-mine").innerHTML = rv.mine.map((m) => `<li>${esc(names[m.code] || m.code)} <span class="mono">${esc(m.code)}</span>
+    ${m.teacher ? "｜" + esc(m.teacher) : "｜不分老師"}｜★${m.stars}・${RV_LABEL.workload[m.workload]}・${RV_LABEL.grading[m.grading]}・${RV_LABEL.attendance[m.attendance]}</li>`).join("");
+}
+
+function refreshReviewPanel() {
+  if (!RV_ON) return;
+  $("rv-panel").hidden = false;
+  const courses = rvPassedCourses();
+  const status = $("rv-status");
+  const loggedIn = Boolean(rv.token) && Date.now() < rv.exp;
+  $("rv-gbtn").hidden = loggedIn;
+  $("rv-logout").hidden = !loggedIn;
+  if (!loggedIn) $("rv-who").textContent = rv.googleReady ? `請用 @${REVIEW_DOMAIN} 帳號登入` : "";
+  if (!courses.length) {
+    $("rv-form").hidden = true;
+    status.textContent = $("paste").value === SAMPLE ? "目前是範例成績單，貼上自己的成績單後，才能評價自己修過的課。" : "成績單上還沒有已及格的課。";
+    return;
+  }
+  $("rv-form").hidden = !loggedIn;
+  if (!loggedIn) { status.textContent = `你修過 ${courses.length} 門課可以評價，登入後開始。`; return; }
+  const prev = $("rv-course").value;
+  $("rv-course").innerHTML = courses.map((r) => `<option value="${esc(r.code)}">${esc(r.name)}（${esc(r.code)}）${rv.mine.some((m) => m.code === r.code) ? " ✓ 已評" : ""}</option>`).join("");
+  if (courses.some((r) => r.code === prev)) $("rv-course").value = prev;
+  $("rv-teacher").innerHTML = rvTeacherOptions($("rv-course").value);
+  rvFillForm();
+  rvRenderMine();
+  status.textContent = "老師清單來自內建開課資料；你修課那學期的老師不在清單上，就選「不確定／不在清單」。";
+}
+
+function rvLogout(msg) {
+  rv.token = ""; rv.exp = 0; rv.mine = [];
+  try { window.google?.accounts?.id?.disableAutoSelect(); } catch (e) { /* 無妨 */ }
+  refreshReviewPanel();
+  $("rv-mine-box").hidden = true;
+  if (msg) $("rv-status").textContent = msg;
+}
+
+async function rvPost(path, body) {
+  if (!rv.token || Date.now() > rv.exp - 30000) { rvLogout("登入已過期，請重新登入。"); return null; }
+  const r = await fetchJSON(`${REVIEW_API}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: rv.token, ...body }) }, 15000);
+  if (r.status === 401) { rvLogout(r.body?.error || "請重新登入。"); return null; }
+  if (r.status !== 200) { $("rv-status").textContent = r.body?.error || `送出失敗（${r.text || r.status}）`; return null; }
+  return r.body;
+}
+
+async function rvOnCredential(resp) {
+  let payload = {};
+  try {
+    const b64 = resp.credential.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+  } catch (e) { $("rv-status").textContent = "登入資訊讀取失敗，請再試一次。"; return; }
+  if (payload.hd !== REVIEW_DOMAIN) { rvLogout(`只接受學校帳號（@${REVIEW_DOMAIN}），請換帳號登入。`); return; }
+  rv.token = resp.credential;
+  rv.exp = payload.exp * 1000;
+  $("rv-who").textContent = `已登入 ${payload.email}`;
+  const r = await rvPost("/mine", {});
+  if (!r) return;
+  rv.mine = r.reviews || [];
+  refreshReviewPanel();
+}
+
+function rvLoadGoogle() {
+  return new Promise((resolve, reject) => {
+    if (window.google?.accounts?.id) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("load"));
+    document.head.appendChild(s);
+  });
+}
+
+async function initReviews() {
+  if (!RV_ON) return;
+  $("rv-min").textContent = String(REVIEW_MIN);
+  $("rv-stars").insertAdjacentHTML("beforeend", [1, 2, 3, 4, 5].map((n) =>
+    `<label><input type="radio" name="rv-stars" value="${n}" aria-label="${n} 顆星"><span aria-hidden="true">★</span></label>`).join(""));
+  $("rv-stars").addEventListener("change", (e) => rvSetStars(Number(e.target.value)));
+  $("rv-course").addEventListener("change", () => { $("rv-teacher").innerHTML = rvTeacherOptions($("rv-course").value); rvFillForm(); });
+  $("rv-teacher").addEventListener("change", rvFillForm);
+  $("rv-logout").addEventListener("click", () => rvLogout("已登出。"));
+  $("rv-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const stars = Number(($("rv-stars").querySelector("input:checked") || {}).value || 0);
+    const body = { code: $("rv-course").value, teacher: $("rv-teacher").value, stars,
+      workload: $("rv-workload").value, grading: $("rv-grading").value, attendance: $("rv-attendance").value };
+    if (!stars || !body.workload || !body.grading || !body.attendance) { $("rv-status").textContent = "請把星等、作業量、給分、點名都選好。"; return; }
+    $("rv-submit").disabled = true;
+    const r = await rvPost("/review", body);
+    $("rv-submit").disabled = false;
+    if (!r) return;
+    rv.mine = rv.mine.filter((m) => !(m.code === body.code && m.teacher === body.teacher)).concat([body]);
+    [...rv.cache.keys()].filter((k) => k.startsWith(body.code + "|")).forEach((k) => rv.cache.delete(k));
+    refreshReviewPanel();
+    $("rv-status").textContent = "已送出，謝謝你幫學弟妹！";
+    loadReviewSummaries();
+  });
+  $("rv-delete").addEventListener("click", async () => {
+    const body = { code: $("rv-course").value, teacher: $("rv-teacher").value, delete: true };
+    const r = await rvPost("/review", body);
+    if (!r) return;
+    rv.mine = rv.mine.filter((m) => !(m.code === body.code && m.teacher === body.teacher));
+    [...rv.cache.keys()].filter((k) => k.startsWith(body.code + "|")).forEach((k) => rv.cache.delete(k));
+    refreshReviewPanel();
+    $("rv-status").textContent = "已刪除這則評價。";
+    loadReviewSummaries();
+  });
+  refreshReviewPanel();
+  try {
+    await rvLoadGoogle();
+    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: rvOnCredential, hd: REVIEW_DOMAIN,
+      auto_select: false, cancel_on_tap_outside: true, ux_mode: "popup" });
+    google.accounts.id.renderButton($("rv-gbtn"), { type: "standard", text: "signin_with", shape: "pill", locale: "zh-TW" });
+    rv.googleReady = true;
+    refreshReviewPanel();
+  } catch (e) {
+    $("rv-status").textContent = "Google 登入元件載入失敗（可能被瀏覽器擋下），暫時無法評價。";
+  }
 }
 
 // ---------- 問 AI：三種來源，依序使用 ----------
@@ -1547,6 +1788,7 @@ $("off-add").addEventListener("click", () => {
 loadOfferings(OFFERINGS_TEXT, "115-1 學期（示範用；正式使用時請換成下學期的開課資料）");
 run();
 initAI();
+initReviews();
 </script>
 </body>
 </html>
